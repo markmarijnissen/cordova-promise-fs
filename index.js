@@ -9,7 +9,7 @@ function __createDir(rootDirEntry, folders, success,error) {
     if (folders.length > 1) {
       __createDir(dirEntry, folders.slice(1),success,error);
     } else {
-      success();
+      success(dirEntry);
     }
   }, error);
 }
@@ -18,6 +18,11 @@ function dirname(str) {
   var parts = str.split('/');
   parts.splice(parts.length-1,1);
   return parts.join('/');
+}
+
+function filename(str) {
+  var parts = str.split('/');
+  return parts[parts.length-1];
 }
 
 /* default fileErrorHandler */
@@ -76,6 +81,11 @@ module.exports = function(options){
     });
   });
 
+  /* debug */
+  fs.then(function(fs){
+    window.__fs = fs;
+  });
+
   /* ensure directory exists */
   function ensure(folders) {
     folders = folders.split('/').filter(function(folder) {
@@ -89,68 +99,98 @@ module.exports = function(options){
     });
   }
 
-  /* does file exist? */
+  /* does file exist? If so, resolve with fileEntry, if not, resolve with false. */
   function exists(path){
-    console.log('ensure',path);
-    return fs.then(function(fs) {
-      return new Promise(function(resolve,reject){
-        resolve(path);
-      });
+    return new Promise(function(resolve,reject){
+      file.then(
+        function(fileEntry){
+          resolve(fileEntry);
+        },
+        function(err){
+          if(err.code === 1) {
+            resolve(false);
+          } else {
+            reject(err);
+          }
+        }
+      );
     });
   }
 
   /* convert path to URL to be used in JS/CSS/HTML */
-  function toUrl(path) {
-    return fs.then(function(fs) {
-      return new Promise(function(resolve,reject){
-        resolve(path);
-      });
+  function toURL(path) {
+    return file.then(function(fileEntry) {
+      return fileEntry.toURL();
+    });
+  }
+
+  /* convert path to URL to be used in JS/CSS/HTML */
+  function toInternalURL(path) {
+    return file.then(function(fileEntry) {
+      return fileEntry.toInternalURL();
     });
   }
 
   /* convert path to base64 date URI */
-  function toDataURI(path) {
-    return fs.then(function(fs) {
+  function toDataURL(path) {
+    return read(path,'readAsDataURL');
+  }
+
+  /* get file file */
+  function file(path,options){
+    options = options || {};
+    return fs.then(function(fs){
       return new Promise(function(resolve,reject){
-        resolve(path);
+        fs.root.getFile(path,options,resolve,reject);
+      });
+    });
+  }
+
+  /* get directory entry */
+  function dir(path,options){
+    options = options || {};
+    return fs.then(function(fs){
+      return new Promise(function(resolve,reject){
+        fs.root.getDirectory(path,options,resolve,reject);
       });
     });
   }
 
   /* return contents of a file */
-  function read(path) {
-    return fs.then(function(fs) {
+  function read(path,method) {
+    method = method || 'readAsText';
+    return file(path).then(function(fileEntry) {
       return new Promise(function(resolve,reject){
-        fs.root.getFile(path,{},function(fileEntry){
-          fileEntry.file(function(file){
-            var reader = new FileReader();
-            reader.onloadend = function(){
-              resolve(this.result);
-            };
-            console.log(reader);
-            reader.readAsText(file);
-          },reject);
+        fileEntry.file(function(file){
+          var reader = new FileReader();
+          reader.onloadend = function(){
+            resolve(this.result);
+          };
+          reader[method](file);
         },reject);
       });
     });
   }
 
+  function readJSON(path){
+    return read(path).then(JSON.parse);
+  }
+
   /* write contents to a file */
   function write(path,blob,mimeType) {
     return ensure(dirname(path))
-      .then(function() { return fs; })
-      .then(function(fs) {
+      .then(function() { return file(path,{create:true}); })
+      .then(function(fileEntry) {
         return new Promise(function(resolve,reject){
-          console.log('write',path,data,fs);
-          fs.root.getFile(path,{create:true},function(fileEntry){
-            fileEntry.createWriter(function(writer){
-              writer.onwriteend = resolve;
-              writer.onerror = reject;
-              if(typeof data === 'string') {
-                data = new Blob([data],{type: mimeType || 'text/plain'});
-              }
-              writer.write(data);
-            },reject);
+          fileEntry.createWriter(function(writer){
+            writer.onwriteend = resolve;
+            writer.onerror = reject;
+            if(typeof blob === 'string') {
+              blob = new Blob([blob],{type: mimeType || 'text/plain'});
+            } else if(blob instanceof Blob !== true){
+              blob = new Blob([JSON.stringify(blob,null,4)],{type: mimeType || 'application/json'});
+            }
+            writer.write(blob);
           },reject);
         });
       });
@@ -158,44 +198,74 @@ module.exports = function(options){
 
   /* move a file */
   function move(src,dest) {
-    return fs.then(function(fs) {
-      return new Promise(function(resolve,reject){
-        console.log('resolve',path);
-        resolve(path);
+    return ensure(dirname(dest))
+      .then(function(dir) {
+        return file(src).then(function(fileEntry){
+          return new Promise(function(resolve,reject){
+            fileEntry.moveTo(dir,filename(dest),resolve,reject);
+          });
+        });
       });
-    });
   }
 
   /* copy a file */
   function copy(src,dest) {
-    return fs.then(function(fs) {
+    return ensure(dirname(dest))
+      .then(function(dir) {
+        return file(src).then(function(fileEntry){
+          return new Promise(function(resolve,reject){
+            fileEntry.copyTo(dir,filename(dest),resolve,reject);
+          });
+        });
+      });
+  }
+
+  /* delete a file */
+  function remove(path,mustExist) {
+    var method = !!mustExist? file: exists;
+    return method(path).then(function(fileEntry){
       return new Promise(function(resolve,reject){
-        console.log('resolve',path);
-        resolve(path);
+        fileEntry.remove(resolve,reject);
+      });
+    });
+  }
+
+  /* delete a directory */
+  function removeDir(path) {
+    return dir(path).then(function(dirEntry){
+      return new Promise(function(resolve,reject) {
+        dirEntry.removeRecursively(resolve,reject);
       });
     });
   }
 
   /* list contents of a directory */
-  function list(path) {
-    return fs.then(function(fs) {
+  function list(path,getAsEntries) {
+    return dir(path).then(function(dirEntry){
       return new Promise(function(resolve,reject){
-        console.log('resolve',path);
-        resolve(path);
+        var dirReader = dirEntry.createReader();
+        dirReader.readEntries(function(entries) {
+          if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+          resolve(entries);
+        }, reject);
       });
     });
   }
 
   return window.fs = {
     fs: fs,
+    file: file,
+    dir: dir,
     read: read,
+    readJSON: readJSON,
     write: write,
     move: move,
     copy: copy,
     list: list,
     ensure: ensure,
     exists: exists,
-    toUrl:toUrl,
-    toDataURI:toDataURI
+    toURL:toURL,
+    toInternalURL:toInternalURL,
+    toDataURL:toDataURL
   };
 };

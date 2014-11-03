@@ -5,8 +5,6 @@ Are you entangled in a async callback mess to get even the simplest task done?
 
 Wait no longer -- here is **cordova-promise-fs**!
 
-(Or wait a little bit longer - not fully implemented yet)
-
 ## Getting started
 
 Install using bower or npm
@@ -28,15 +26,28 @@ var fs = CordovaFS({
 });
 
 fs.fs // returns promise for the FileSystem
+fs.file(filename) // returns a fileEntry
+fs.dir(path) // returns a dirEntry
+fs.exists(filename) // checks if file exists. returns fileEntry or false.
+
 fs.read(filename) // returns text-content of a file
-fs.write(filename,BlobOrString) // write a blob or string;
-fs.move(src,dest)
-fs.copy(src,dest)
+fs.readJSON(filename) // returns JSON-parsed contents of a file
+fs.write(filename,data) // writes a Blob, a String, or data (as JSON). Ensures directory exists.
+
+fs.move(src,dest) // move from src to dist. Ensures dest directory exists.
+fs.copy(src,dest) // copy from src to dist. Ensures dest directory exists.
+fs.remove(src)    // removes file. Resolves even if file was already removed.
+fs.remove(src,true) // removes file. Rejects when file does not exist.
+fs.removeDir(path)
+
 fs.list(path) // return array with filenames (including path)
+fs.list(path,true) // return an array with entries.
+
 fs.ensure(path) // ensures directory exists
-fs.exists(filename) // checks if file exists
-fs.toUrl(filename) // returns URL to be used in js/html/css
-fs.toDataURI(filename) // returns Base64 encoded Data URI
+
+fs.toUrl(filename) // returns URL to be used in js/html/css (file://....)
+fs.toInternalURL(filename) // returns cordova internal URL (cdvfile://....)
+fs.toDataURL(filename) // returns Base64 encoded Data URI
 ```
 
 ## Contribute
