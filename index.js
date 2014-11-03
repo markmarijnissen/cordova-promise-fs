@@ -261,6 +261,8 @@ module.exports = function(options){
     write: write,
     move: move,
     copy: copy,
+    remove: remove,
+    removeDir: removeDir,
     list: list,
     ensure: ensure,
     exists: exists,
