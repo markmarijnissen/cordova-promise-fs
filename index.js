@@ -116,7 +116,7 @@ module.exports = function(options){
   /* does file exist? If so, resolve with fileEntry, if not, resolve with false. */
   function exists(path){
     return new Promise(function(resolve,reject){
-      file.then(
+      file(path).then(
         function(fileEntry){
           resolve(fileEntry);
         },
@@ -165,7 +165,11 @@ module.exports = function(options){
     options = options || {};
     return fs.then(function(fs){
       return new Promise(function(resolve,reject){
-        fs.root.getDirectory(path,options,resolve,reject);
+        if(!path || path === '/') {
+          resolve(fs.root);
+        } else {
+          fs.root.getDirectory(path,options,resolve,reject);
+        }
       });
     });
   }
@@ -236,19 +240,12 @@ module.exports = function(options){
 
   /* delete a file */
   function remove(path,mustExist) {
-    if(mustExist) {
-      return file(path).then(function(fileEntry){
-        return new Promise(function(resolve,reject){
-          fileEntry.remove(resolve,reject);
-        });
+    var method = mustExist? file:exists;
+    return method(path).then(function(fileEntry){
+      return new Promise(function(resolve,reject){
+        fileEntry.remove(resolve,reject);
       });
-    } else { // can't invoke file/entry dynamically??
-      return entry(path).then(function(fileEntry){
-        return new Promise(function(resolve,reject){
-          fileEntry.remove(resolve,reject);
-        });
-      });
-    }
+    });
   }
 
   /* delete a directory */
