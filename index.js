@@ -273,43 +273,55 @@ module.exports = function(options){
     });
   }
 
-  var transferQueue = [], inprogress = 0;
-  function popTransferQueue(){
-    while(transferQueue.length > 0 && inprogress < options.concurrency){
-      inprogress++;
-      console.log('started task #'+inprogress);
 
+  var transferQueue = [], // queued fileTransfers
+      inprogress = 0;     // currently active filetransfers
+
+  // Whenever we want to start a transfer, we call popTransferQueue
+  function popTransferQueue(){
+    // while we are not at max concurrency
+    while(transferQueue.length > 0 && inprogress < options.concurrency){
+      // increment activity counter
+      inprogress++;
+      
+      // fetch filetranfer, method-type (isDownload) and arguments
       var args = transferQueue.pop();
-      var ft = args.shift();
       var isDownload = args.shift();
-      console.log(ft,isDownload,args);
+      var ft = args.shift();
+
+      // Actually initialize the fileTransfer.
       if(isDownload){
         ft.download.apply(ft,args);
       } else {
+        // Stupid API. 'upload' switched around the 'trustAllHosts' and 'options' arguments.
         var opts = args[4]; args[4] = args[5]; args[5] = opts;
+        // Switch around serverUrl/localPath because we transfer in reverse direction
+        var localPath = args[1]; args[1] = args[0]; args[0] = localPath;
         ft.upload.apply(ft,args);
       }
     }
+    // if we are at max concurrency, popTransferQueue() will be called whenever
+    // the transfer is ready and there is space avaialable.
   }
 
+  // Promise callback to check if there are any more queued transfers 
   function nextTransfer(){
-    inprogress--;
-    console.log('next Transfer. Remaining='+inprogress);
-    popTransferQueue();
+    inprogress--; // decrement counter to free up one space to start transfers again!
+    popTransferQueue(); // check if there are any queued transfers
   }
 
-  function filetransfer(isDownload,url,dest,options,onprogress){
+  function filetransfer(isDownload,serverUrl,localPath,options,onprogress){
     if(typeof options === 'function') {
       onprogress = options;
       options = {};
     }
     options = options || {};
     var ft = new FileTransfer();
-    var promise = create(dest).then(function(fileEntry){
+    var promise = create(localPath).then(function(fileEntry){
       return new Promise(function(resolve,reject){
-        url = encodeURI(url);
-        dest = fileEntry.toInternalURL();
-        transferQueue.push([ft,isDownload,url,dest,resolve,reject,options.trustAllHosts || false,options]);
+        serverUrl = encodeURI(serverUrl);
+        localPath = fileEntry.toInternalURL();
+        transferQueue.push([ft,isDownload,serverUrl,localPath,resolve,reject,options.trustAllHosts || false,options]);
         popTransferQueue();
       }).then(nextTransfer,nextTransfer);
     });
@@ -329,8 +341,8 @@ module.exports = function(options){
     return filetransfer(true,url,dest,options,onprogress);
   }
 
-  function upload(url,dest,options,onprogress){
-    return filetransfer(false,url,dest,options,onprogress);
+  function upload(source,dest,options,onprogress){
+    return filetransfer(false,dest,source,options,onprogress);
   }
 
   return window.fs = {
