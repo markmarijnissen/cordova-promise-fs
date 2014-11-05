@@ -29,42 +29,16 @@ function filename(str) {
   return parts[parts.length-1];
 }
 
-/* default fileErrorHandler */
-var __defaultErrorHandler = function(err) {
-    var msg = '';
-    switch (err.code) {
-      case FileError.QUOTA_EXCEEDED_ERR:
-        msg = 'QUOTA_EXCEEDED_ERR';
-        break;
-      case FileError.NOT_FOUND_ERR:
-        msg = 'NOT_FOUND_ERR';
-        break;
-      case FileError.SECURITY_ERR:
-        msg = 'SECURITY_ERR';
-        break;
-      case FileError.INVALID_MODIFICATION_ERR:
-        msg = 'INVALID_MODIFICATION_ERR';
-        break;
-      case FileError.INVALID_STATE_ERR:
-        msg = 'INVALID_STATE_ERR';
-        break;
-      default:
-        msg = err;
-        break;
-    }
-    console.error(msg);
-};
+var transferQueue = [], // queued fileTransfers
+    inprogress = 0;     // currently active filetransfers
 
 /**
  * Factory function: Create a single instance (based on single FileSystem)
  */
 module.exports = function(options){
-  /* default error handler */
-  var handleError = options.errorHandler;// || __defaultErrorHandler;
-
   /* Promise implementation */
   var Promise = options.Promise || window.Promise;
-  if(!Promise) { handleError(new Error("No Promise library given in options.Promise")); }
+  if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
   
   /* default options */
   options = options || {};
@@ -258,21 +232,40 @@ module.exports = function(options){
   }
 
   /* list contents of a directory */
-  function list(path,getAsEntries) {
+  function list(path,mode) {
+    var recursive = mode.indexOf('r') > -1;
+    var getAsEntries = mode.indexOf('e') > -1;
+    var onlyFiles = mode.indexOf('f') > -1;
+    var onlyDirs = mode.indexOf('d') > -1;
+    if(onlyFiles && onlyDirs) {
+      onlyFiles = false;
+      onlyDirs = false;
+    }
+
     return dir(path).then(function(dirEntry){
       return new Promise(function(resolve,reject){
         var dirReader = dirEntry.createReader();
         dirReader.readEntries(function(entries) {
-          if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
-          resolve(entries);
+          var promises = [Promise.resolve(entries)];
+          if(recursive) {
+            entries
+              .filter(function(entry){return entry.isDirectory; })
+              .forEach(function(entry){
+                promises.push(list(entry.fullPath,'re'));
+              });
+          }
+          Promise.all(promises).then(function(values){
+              var entries = [];
+              entries = entries.concat.apply(entries,values);
+              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
+              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
+              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+              resolve(entries);
+            },reject);
         }, reject);
       });
     });
   }
-
-
-  var transferQueue = [], // queued fileTransfers
-      inprogress = 0;     // currently active filetransfers
 
   // Whenever we want to start a transfer, we call popTransferQueue
   function popTransferQueue(){
@@ -342,7 +335,7 @@ module.exports = function(options){
     return filetransfer(false,dest,source,options,onprogress);
   }
 
-  return window.fs = {
+  return {
     fs: fs,
     file: file,
     filename: filename,

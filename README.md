@@ -36,8 +36,13 @@ var fs = CordovaFS({
 fs.exists(filename)       // checks if file exists. returns fileEntry or false.
 fs.file(filename)         // returns a fileEntry
 fs.dir(path)              // returns a dirEntry
-fs.list(path)             // return array with filenames (including path)
-fs.list(path,true)        // return an array with entries.
+fs.list(path,optionString)// return array with filenames (including path)
+
+optionString = 'r'        // recursive list
+optionString = 'd'        // only list directories
+optionString = 'f'        // only list files
+optionString = 'e'        // return results as FileEntry/DirectoryEntry (instead as path-string)
+optionString = 'rfe'      // mix options! return entries of all files, recursively
 ```
 
 ### Reading files
@@ -86,6 +91,16 @@ fs.fs // returns promise for the FileSystem
 fs.filename(path) // converts path to filename (last part after /)
 fs.dirname(path) // converts path dirname (everything except part after last /)
 ```
+
+## Changelog
+
+### 0.3.0 (05/11/2014)
+
+* Added `list` options (list `r`ecursively, only `f`iles, only `d`irectories, return result as `e`ntries)
+
+### 0.2.0 (05/11/2014)
+
+* Added `upload` and `download` methods with concurrency limit
 
 ## Contribute
 
