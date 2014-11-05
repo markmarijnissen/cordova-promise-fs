@@ -1,9 +1,8 @@
 cordova-promise-fs
 ==========
+> Wraps the Cordova File API in convenient functions (that return a Promise)
 
-Are you entangled in a async callback mess to get even the simplest task done?
-
-Wait no longer -- here is **cordova-promise-fs**!
+Are you entangled in a async callback mess to get even the simplest task done? Wait no longer -- here is **cordova-promise-fs**!
 
 ## Getting started
 
