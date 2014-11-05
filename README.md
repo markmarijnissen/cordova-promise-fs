@@ -18,35 +18,42 @@ Are you entangled in a async callback mess to get even the simplest task done? W
 
 ## Usage
 
+### Initialize & configuration
 ```javascript
 var CordovaFS = require('cordova-fs-promise');
-
-// Initialize a 'CordovaFsPromise'
 var fs = CordovaFS({
   persistent: true, // or false
   storageSize: 20*1024*1024, // storage size in bytes, default 20MB 
   concurrency: 3 // how many concurrent uploads/downloads?
   Promise: require('promiscuous') // Your favorite Promise/A+ library! 
 });
+```
 
-// Browsing files
+### Browsing files
+```javascript
 fs.exists(filename)       // checks if file exists. returns fileEntry or false.
 fs.file(filename)         // returns a fileEntry
 fs.dir(path)              // returns a dirEntry
 fs.list(path)             // return array with filenames (including path)
 fs.list(path,true)        // return an array with entries.
+```
 
-// Read and get data
+### Reading files
+```javascript
 fs.read(filename)         // returns text-content of a file
 fs.readJSON(filename)     // returns JSON-parsed contents of a file
 fs.toUrl(filename)        // returns URL to be used in js/html/css (file://....)
 fs.toInternalURL(filename)// returns cordova internal URL (cdvfile://....)
 fs.toDataURL(filename)    // returns Base64 encoded Data URI
+```
 
-// Write data
+### Writing files
+```javascript
 fs.write(filename,data)   // writes a Blob, a String, or data (as JSON). Ensures directory exists.
+```
 
-// Modifying files 
+### File operations
+```javascript
 fs.create(filename)       // creates a file
 fs.ensure(path)           // ensures directory exists
 fs.move(src,dest)         // move from src to dist. Ensures dest directory exists.
@@ -54,8 +61,10 @@ fs.copy(src,dest)         // copy from src to dist. Ensures dest directory exist
 fs.remove(src)            // removes file. Resolves even if file was already removed.
 fs.remove(src,true)       // removes file. Rejects when file does not exist.
 fs.removeDir(path)
+```
 
-// Upload and Download
+### Upload and download
+```javascript
 var promise = fs.upload(source,destination,[options],[onprogress]);
 var promise = fs.upload(source,destination,[onprogress]);
 var promise = fs.download(source,destination,[options],[onprogress]);
@@ -67,8 +76,10 @@ promise.abort();
 
 // Gotcha: progress and abort() are unchainable; 
 fs.upload(...).then(...)  // won't return the augmented promise, just an ordinary one!
+```
 
-// Utilities
+### Utilities
+```javascript
 fs.fs // returns promise for the FileSystem
 fs.filename(path) // converts path to filename (last part after /)
 fs.dirname(path) // converts path dirname (everything except part after last /)
