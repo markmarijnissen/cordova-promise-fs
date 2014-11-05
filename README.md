@@ -29,7 +29,7 @@ var fs = CordovaFS({
 });
 ```
 
-*Note:* Concurrent uploads/downloads completely trash your mobile application. That's why I've put a concurrency limit on the number of downloads/uploads. Meteor sets this number on 30. In my experimental testing, I found 3 much more reasonable.
+**Note on concurrency:** Concurrent uploads/downloads completely trash your mobile application. That's why I've put a concurrency limit on the number of downloads/uploads. Meteor sets this number on 30. In my experimental testing, I found 3 much more reasonable.
 
 ### Browsing files
 ```javascript
