@@ -16,8 +16,12 @@ function __createDir(rootDirEntry, folders, success,error) {
 
 function dirname(str) {
   var parts = str.split('/');
-  parts.splice(parts.length-1,1);
-  return parts.join('/');
+  if(parts.length > 1) {
+    parts.splice(parts.length-1,1);
+    return parts.join('/');
+  } else {
+    return '';
+  }
 }
 
 function filename(str) {
@@ -66,6 +70,7 @@ module.exports = function(options){
   options = options || {};
   options.persistent = options.persistent !== undefined? options.persistent: true;
   options.storageSize = options.storageSize || 20*1024*1024;
+  options.concurrency = options.concurrency || 3;
 
   /* Cordova deviceReady promise */
   var deviceReady = new Promise(function(resolve,reject){
@@ -86,15 +91,24 @@ module.exports = function(options){
     window.__fs = fs;
   });
 
+  function create(path){
+    return ensure(dirname(path)).then(function(){
+      return file(path,{create:true});
+    });
+  }
+
   /* ensure directory exists */
   function ensure(folders) {
-    folders = folders.split('/').filter(function(folder) {
-      return folder && folder.length > 0 && folder[0] !== '.';
-    });
-
     return fs.then(function(fs){
       return new Promise(function(resolve,reject){
-          __createDir(fs.root,folders,resolve,reject);
+          if(!folders) {
+            resolve(fs.root);
+          } else {
+            folders = folders.split('/').filter(function(folder) {
+              return folder && folder.length > 0 && folder[0] !== '.';
+            });
+            __createDir(fs.root,folders,resolve,reject);
+          }
         });
     });
   }
@@ -119,14 +133,14 @@ module.exports = function(options){
 
   /* convert path to URL to be used in JS/CSS/HTML */
   function toURL(path) {
-    return file.then(function(fileEntry) {
+    return file(path).then(function(fileEntry) {
       return fileEntry.toURL();
     });
   }
 
   /* convert path to URL to be used in JS/CSS/HTML */
   function toInternalURL(path) {
-    return file.then(function(fileEntry) {
+    return file(path).then(function(fileEntry) {
       return fileEntry.toInternalURL();
     });
   }
@@ -222,12 +236,19 @@ module.exports = function(options){
 
   /* delete a file */
   function remove(path,mustExist) {
-    var method = !!mustExist? file: exists;
-    return method(path).then(function(fileEntry){
-      return new Promise(function(resolve,reject){
-        fileEntry.remove(resolve,reject);
+    if(mustExist) {
+      return file(path).then(function(fileEntry){
+        return new Promise(function(resolve,reject){
+          fileEntry.remove(resolve,reject);
+        });
       });
-    });
+    } else { // can't invoke file/entry dynamically??
+      return entry(path).then(function(fileEntry){
+        return new Promise(function(resolve,reject){
+          fileEntry.remove(resolve,reject);
+        });
+      });
+    }
   }
 
   /* delete a directory */
@@ -252,10 +273,73 @@ module.exports = function(options){
     });
   }
 
+  var transferQueue = [], inprogress = 0;
+  function popTransferQueue(){
+    while(transferQueue.length > 0 && inprogress < options.concurrency){
+      inprogress++;
+      console.log('started task #'+inprogress);
+
+      var args = transferQueue.pop();
+      var ft = args.shift();
+      var isDownload = args.shift();
+      console.log(ft,isDownload,args);
+      if(isDownload){
+        ft.download.apply(ft,args);
+      } else {
+        var opts = args[4]; args[4] = args[5]; args[5] = opts;
+        ft.upload.apply(ft,args);
+      }
+    }
+  }
+
+  function nextTransfer(){
+    inprogress--;
+    console.log('next Transfer. Remaining='+inprogress);
+    popTransferQueue();
+  }
+
+  function filetransfer(isDownload,url,dest,options,onprogress){
+    if(typeof options === 'function') {
+      onprogress = options;
+      options = {};
+    }
+    options = options || {};
+    var ft = new FileTransfer();
+    var promise = create(dest).then(function(fileEntry){
+      return new Promise(function(resolve,reject){
+        url = encodeURI(url);
+        dest = fileEntry.toInternalURL();
+        transferQueue.push([ft,isDownload,url,dest,resolve,reject,options.trustAllHosts || false,options]);
+        popTransferQueue();
+      }).then(nextTransfer,nextTransfer);
+    });
+    if(typeof onprogress === 'function') ft.onprogress = onprogress;
+    promise.progress = function(onprogress){
+      ft.onprogress = onprogress;
+      return promise;
+    };
+    promise.abort = function(){
+      ft.abort();
+      return promise;
+    };
+    return promise;
+  }
+
+  function download(url,dest,options,onprogress){
+    return filetransfer(true,url,dest,options,onprogress);
+  }
+
+  function upload(url,dest,options,onprogress){
+    return filetransfer(false,url,dest,options,onprogress);
+  }
+
   return window.fs = {
     fs: fs,
     file: file,
+    filename: filename,
     dir: dir,
+    dirname: dirname,
+    create:create,
     read: read,
     readJSON: readJSON,
     write: write,
@@ -266,6 +350,8 @@ module.exports = function(options){
     list: list,
     ensure: ensure,
     exists: exists,
+    download: download,
+    upload: upload,
     toURL:toURL,
     toInternalURL:toInternalURL,
     toDataURL:toDataURL

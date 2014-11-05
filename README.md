@@ -7,11 +7,14 @@ Wait no longer -- here is **cordova-promise-fs**!
 
 ## Getting started
 
-Install using bower or npm
-
 ```bash
+  # fetch code using bower or npm
   bower install cordova-promise-fs
   npm install cordova-promise-fs
+
+  # install Cordova plugins
+  cordova plugin add org.apache.cordova.file
+  cordova plugin add org.apache.cordova.file-transfer # optional
 ```
 
 ## Usage
@@ -19,35 +22,57 @@ Install using bower or npm
 ```javascript
 var CordovaFS = require('cordova-fs-promise');
 
+// Initialize a 'CordovaFsPromise'
 var fs = CordovaFS({
   persistent: true, // or false
   storageSize: 20*1024*1024, // storage size in bytes, default 20MB 
+  concurrency: 3 // how many concurrent uploads/downloads?
   Promise: require('promiscuous') // Your favorite Promise/A+ library! 
 });
 
-fs.fs // returns promise for the FileSystem
-fs.file(filename) // returns a fileEntry
-fs.dir(path) // returns a dirEntry
-fs.exists(filename) // checks if file exists. returns fileEntry or false.
+// Browsing files
+fs.exists(filename)       // checks if file exists. returns fileEntry or false.
+fs.file(filename)         // returns a fileEntry
+fs.dir(path)              // returns a dirEntry
+fs.list(path)             // return array with filenames (including path)
+fs.list(path,true)        // return an array with entries.
 
-fs.read(filename) // returns text-content of a file
-fs.readJSON(filename) // returns JSON-parsed contents of a file
-fs.write(filename,data) // writes a Blob, a String, or data (as JSON). Ensures directory exists.
+// Read and get data
+fs.read(filename)         // returns text-content of a file
+fs.readJSON(filename)     // returns JSON-parsed contents of a file
+fs.toUrl(filename)        // returns URL to be used in js/html/css (file://....)
+fs.toInternalURL(filename)// returns cordova internal URL (cdvfile://....)
+fs.toDataURL(filename)    // returns Base64 encoded Data URI
 
-fs.move(src,dest) // move from src to dist. Ensures dest directory exists.
-fs.copy(src,dest) // copy from src to dist. Ensures dest directory exists.
-fs.remove(src)    // removes file. Resolves even if file was already removed.
-fs.remove(src,true) // removes file. Rejects when file does not exist.
+// Write data
+fs.write(filename,data)   // writes a Blob, a String, or data (as JSON). Ensures directory exists.
+
+// Modifying files 
+fs.create(filename)       // creates a file
+fs.ensure(path)           // ensures directory exists
+fs.move(src,dest)         // move from src to dist. Ensures dest directory exists.
+fs.copy(src,dest)         // copy from src to dist. Ensures dest directory exists.
+fs.remove(src)            // removes file. Resolves even if file was already removed.
+fs.remove(src,true)       // removes file. Rejects when file does not exist.
 fs.removeDir(path)
 
-fs.list(path) // return array with filenames (including path)
-fs.list(path,true) // return an array with entries.
+// Upload and Download
+var promise = fs.upload(source,destination,[options],[onprogress]);
+var promise = fs.upload(source,destination,[onprogress]);
+var promise = fs.download(source,destination,[options],[onprogress]);
+var promise = fs.download(source,destination,[onprogress]);
 
-fs.ensure(path) // ensures directory exists
+// upload/download augments the promise with two extra functions:
+promise.progress(function(progressEvent){...})
+promise.abort();
 
-fs.toUrl(filename) // returns URL to be used in js/html/css (file://....)
-fs.toInternalURL(filename) // returns cordova internal URL (cdvfile://....)
-fs.toDataURL(filename) // returns Base64 encoded Data URI
+// Gotcha: progress and abort() are unchainable; 
+fs.upload(...).then(...)  // won't return the augmented promise, just an ordinary one!
+
+// Utilities
+fs.fs // returns promise for the FileSystem
+fs.filename(path) // converts path to filename (last part after /)
+fs.dirname(path) // converts path dirname (everything except part after last /)
 ```
 
 ## Contribute
