@@ -7,9 +7,12 @@ Are you entangled in a async callback mess to get even the simplest task done? W
 ## Getting started
 
 ```bash
-  # fetch code using bower or npm
+  # fetch code using bower
   bower install cordova-promise-fs
+  # ...or npm...
   npm install cordova-promise-fs
+  # or just download and include the javascript
+  curl https://raw.githubusercontent.com/markmarijnissen/cordova-file-cache/master/CordovaFileCache.js
 
   # install Cordova plugins
   cordova plugin add org.apache.cordova.file
@@ -20,8 +23,7 @@ Are you entangled in a async callback mess to get even the simplest task done? W
 
 ### Initialize & configuration
 ```javascript
-var CordovaFS = require('cordova-fs-promise');
-var fs = CordovaFS({
+var fs = CordovaPromiseFS({
   persistent: true, // or false
   storageSize: 20*1024*1024, // storage size in bytes, default 20MB 
   concurrency: 3 // how many concurrent uploads/downloads?
@@ -94,6 +96,11 @@ fs.dirname(path) // converts path dirname (everything except part after last /)
 
 ## Changelog
 
+### 0.4.0 (06/11/2014)
+
+* Various small changes
+* Added `CordovaPromiseFS.js` for everybody who does not use Browserify/Webpack
+
 ### 0.3.0 (05/11/2014)
 
 * Added `list` options (list `r`ecursively, only `f`iles, only `d`irectories, return result as `e`ntries)
@@ -103,6 +110,12 @@ fs.dirname(path) // converts path dirname (everything except part after last /)
 * Added `upload` and `download` methods with concurrency limit
 
 ## Contribute
+
+Convert CommonJS to a browser-version:
+```bash
+npm install gluejs -g
+npm run-script prepublish
+```
 
 Feel free to contribute to this project in any way. The easiest way to support this project is by giving it a star.
 
