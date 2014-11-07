@@ -120,9 +120,9 @@ module.exports = function(options){
   }
 
   /* synchronous helper to get internal URL. */
-  function toInternlURLSync(path){
+  function toInternalURLSync(path){
     if(path[0] !== '/') path = '/' + path;
-    return 'cdvfile://localhost/'+(this.options.persistent? 'persistent':'temporary') + path;
+    return 'cdvfile://localhost/'+(options.persistent? 'persistent':'temporary') + path;
   }
 
   /* convert path to base64 date URI */
@@ -221,10 +221,14 @@ module.exports = function(options){
   /* delete a file */
   function remove(path,mustExist) {
     var method = mustExist? file:exists;
-    return method(path).then(function(fileEntry){
-      return new Promise(function(resolve,reject){
-        fileEntry.remove(resolve,reject);
-      });
+    return new Promise(function(resolve,reject){
+        method(path).then(function(fileEntry){
+        if(fileEntry !== false) {
+          fileEntry.remove(resolve,reject);
+        } else {
+          resolve();
+        }
+      },reject);
     });
   }
 
@@ -316,7 +320,7 @@ module.exports = function(options){
     var ft = new FileTransfer();
     var promise = new Promise(function(resolve,reject){
       serverUrl = encodeURI(serverUrl);
-      localPath = toInternlURLSync(localPath);
+      localPath = toInternalURLSync(localPath);
       transferQueue.push([ft,isDownload,serverUrl,localPath,resolve,reject,options.trustAllHosts || false,options]);
       popTransferQueue();
     }).then(nextTransfer,nextTransfer);
@@ -363,6 +367,7 @@ module.exports = function(options){
     toURL:toURL,
     toInternalURL:toInternalURL,
     toDataURL:toDataURL,
+    options: options,
     Promise: Promise
   };
 };
