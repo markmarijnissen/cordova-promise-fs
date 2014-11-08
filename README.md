@@ -11,13 +11,16 @@ Are you entangled in a async callback mess to get even the simplest task done? W
   bower install cordova-promise-fs
   # ...or npm...
   npm install cordova-promise-fs
-  # or just download and include the javascript
-  curl https://raw.githubusercontent.com/markmarijnissen/cordova-file-cache/master/CordovaFileCache.js
-
-  # install Cordova plugins
+  
+  # install Cordova and plugins
+  cordova platform add ios@3.7.0
   cordova plugin add org.apache.cordova.file
   cordova plugin add org.apache.cordova.file-transfer # optional
 ```
+
+**IMPORTANT:** For iOS, use Cordova 3.7.0 or higher (due to a [bug](https://github.com/AppGyver/steroids/issues/534) that affects requestFileSystem).
+
+Or just download and include [CordovaPromiseFS.js](https://raw.githubusercontent.com/markmarijnissen/cordova-promise-fs/master/dist/CordovaPromiseFS.js).
 
 ## Usage
 
@@ -96,6 +99,11 @@ fs.dirname(path) // converts path dirname (everything except part after last /)
 
 ## Changelog
 
+### 0.5.0 (06/11/2014)
+
+* Use `webpack` for the build proces
+* Fixed many small bugs
+
 ### 0.4.0 (06/11/2014)
 
 * Various small changes
@@ -113,7 +121,7 @@ fs.dirname(path) // converts path dirname (everything except part after last /)
 
 Convert CommonJS to a browser-version:
 ```bash
-npm install gluejs -g
+npm install webpack -g
 npm run-script prepublish
 ```
 

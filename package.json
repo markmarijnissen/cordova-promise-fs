@@ -1,10 +1,10 @@
 {
   "name": "cordova-promise-fs",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Cordova FileSystem convienence functions that return promises.",
   "main": "index.js",
   "scripts": {
-    "prepublish":"gluejs --include index.js --global CordovaPromiseFS > CordovaPromiseFS.js",
+    "prepublish":"webpack index.js dist/CordovaPromiseFS.js --output-library CordovaPromiseFS --output-library-target var",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
