@@ -76,11 +76,18 @@ fs.removeDir(path)
 ```
 
 ### Upload and download
+
+FileTransfers with automatric retry and concurrency limit!
+
 ```javascript
 var promise = fs.upload(source,destination,[options],[onprogress]);
 var promise = fs.upload(source,destination,[onprogress]);
 var promise = fs.download(source,destination,[options],[onprogress]);
 var promise = fs.download(source,destination,[onprogress]);
+
+options.trustAllHosts
+options.retry = [1000,2000,3000] // retry attemps: millisecond to wait before trying again.
+// plus all normal cordova-file-transfer options
 
 // upload/download augments the promise with two extra functions:
 promise.progress(function(progressEvent){...})
@@ -95,6 +102,8 @@ fs.upload(...).then(...)  // won't return the augmented promise, just an ordinar
 fs.fs // returns promise for the FileSystem
 fs.filename(path) // converts path to filename (last part after /)
 fs.dirname(path) // converts path dirname (everything except part after last /)
+fs.deviceready // deviceready promise
+fs.options // options
 ```
 
 ## Changelog
