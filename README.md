@@ -1,6 +1,6 @@
 cordova-promise-fs
 ==========
-> Wraps the Cordova File API in convenient functions (that return a Promise)
+> Wraps the Cordova (and Chrome) File API in convenient functions (that return a Promise)
 
 Are you entangled in a async callback mess to get even the simplest task done? Wait no longer -- here is **cordova-promise-fs**!
 
@@ -104,9 +104,14 @@ fs.filename(path) // converts path to filename (last part after /)
 fs.dirname(path) // converts path dirname (everything except part after last /)
 fs.deviceready // deviceready promise
 fs.options // options
+fs.isCordova // is Cordova App?
 ```
 
 ## Changelog
+
+### 0.6.0 (13/11/2014)
+
+* Chrome Support!
 
 ### 0.5.0 (06/11/2014)
 

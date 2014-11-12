@@ -1,7 +1,7 @@
 {
   "name": "cordova-promise-fs",
   "main": "dist/CordovaPromiseFS.js",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "homepage": "https://github.com/markmarijnissen/cordova-promise-fs",
   "authors": [
     "Mark Marijnissen <markmarijnissen@gmail.com>"

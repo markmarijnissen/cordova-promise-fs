@@ -57,23 +57,29 @@ module.exports = function(options){
   } else {
     /* FileTransfer implementation for Chrome */
     deviceready = Promise.resolve();
-    window.requestFileSystem = webkitRequestFileSystem;
-    window.FileTransfer = function FileTransfer(){};
-    FileTransfer.prototype.download = function download(url,file,win,fail) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url);
-      xhr.onreadystatechange = function(onSuccess, onError, cb) {
-        if (xhr.readyState == 4) {
-          if(xhr.status === 200){
-            write(file,xhr.responseText).then(win,fail);
-          } else {
-            fail(xhr.status);
+    if(typeof webkitRequestFileSystem !== 'undefined'){
+      window.requestFileSystem = webkitRequestFileSystem;
+      window.FileTransfer = function FileTransfer(){};
+      FileTransfer.prototype.download = function download(url,file,win,fail) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.onreadystatechange = function(onSuccess, onError, cb) {
+          if (xhr.readyState == 4) {
+            if(xhr.status === 200){
+              write(file,xhr.responseText).then(win,fail);
+            } else {
+              fail(xhr.status);
+            }
           }
-        }
+        };
+        xhr.send();
+        return xhr;
       };
-      xhr.send();
-      return xhr;
-    };
+    } else {
+      window.requestFileSystem = function(x,y,z,fail){
+        fail(new Error('requestFileSystem not supported!'));
+      };
+    }
   }
 
 
