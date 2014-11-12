@@ -48,10 +48,33 @@ module.exports = function(options){
   options.retry = options.retry || [];
 
   /* Cordova deviceready promise */
-  var deviceready = new Promise(function(resolve,reject){
-    document.addEventListener("deviceready", resolve, false);
-    setTimeout(function(){ reject(new Error('deviceready has not fired after 5 seconds.')); },5100);
-  });
+  var deviceready, isCordova = typeof cordova !== 'undefined';
+  if(isCordova){
+    deviceready = new Promise(function(resolve,reject){
+      document.addEventListener("deviceready", resolve, false);
+      setTimeout(function(){ reject(new Error('deviceready has not fired after 5 seconds.')); },5100);
+    });
+  } else {
+    /* FileTransfer implementation for Chrome */
+    deviceready = Promise.resolve();
+    window.requestFileSystem = webkitRequestFileSystem;
+    window.FileTransfer = function FileTransfer(){};
+    FileTransfer.prototype.download = function download(url,file,win,fail) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.onreadystatechange = function(onSuccess, onError, cb) {
+        if (xhr.readyState == 4) {
+          if(xhr.status === 200){
+            write(file,xhr.responseText).then(win,fail);
+          } else {
+            fail(xhr.status);
+          }
+        }
+      };
+      xhr.send();
+      return xhr;
+    };
+  }
 
 
   /* the filesystem! */
@@ -117,17 +140,31 @@ module.exports = function(options){
   }
 
   /* convert path to URL to be used in JS/CSS/HTML */
-  function toInternalURL(path) {
-    return file(path).then(function(fileEntry) {
-      return fileEntry.toInternalURL();
-    });
-  }
+  if(isCordova) {
+    /* synchronous helper to get internal URL. */
+    function toInternalURLSync(path){
+      if(path[0] !== '/') path = '/' + path;
+      return 'cdvfile://localhost/'+(options.persistent? 'persistent':'temporary') + path;
+    }
 
-  /* synchronous helper to get internal URL. */
-  function toInternalURLSync(path){
-    if(path[0] !== '/') path = '/' + path;
-    return 'cdvfile://localhost/'+(options.persistent? 'persistent':'temporary') + path;
-  }
+    function toInternalURL(path) {
+      return file(path).then(function(fileEntry) {
+        return fileEntry.toInternalURL();
+      });
+    }
+  } else {
+    /* synchronous helper to get internal URL. */
+    function toInternalURLSync(path){
+      if(path[0] !== '/') path = '/' + path;
+      return 'filesystem:'+location.origin+(options.persistent? '/persistent':'/temporary') + path;
+    }
+
+    function toInternalURL(path) {
+      return file(path).then(function(fileEntry) {
+        return fileEntry.toURL();
+      });
+    }
+  } 
 
   /* convert path to base64 date URI */
   function toDataURL(path) {
@@ -293,18 +330,20 @@ module.exports = function(options){
       var args = transferQueue.pop();
       var ft = args.shift();
       var isDownload = args.shift();
+      var serverUrl = args.shift();
+      var localPath = args.shift();
+      var win = args.shift();
+      var fail = args.shift();
+      var trustAllHosts = args.shift();
+      var transferOptions = args.shift();
       
       if(ft._aborted) {
         inprogress--;
       } else if(isDownload){
-        ft.download.apply(ft,args);
+        ft.download.call(ft,serverUrl,localPath,win,fail,transferOptions,trustAllHosts);
         if(ft.onprogress) ft.onprogress(new ProgressEvent());
       } else {
-        // Stupid API. 'upload' switched around the 'trustAllHosts' and 'options' arguments.
-        var opts = args[4]; args[4] = args[5]; args[5] = opts;
-        // Switch around serverUrl/localPath because we transfer in reverse direction
-        var localPath = args[1]; args[1] = args[0]; args[0] = localPath;
-        ft.upload.apply(ft,args);
+        ft.upload.call(ft,localPath,serverUrl,win,fail,trustAllHosts,transferOptions);
       }
     }
     // if we are at max concurrency, popTransferQueue() will be called whenever
@@ -324,7 +363,7 @@ module.exports = function(options){
       transferOptions = {};
     }
     serverUrl = encodeURI(serverUrl);
-    localPath = toInternalURLSync(localPath);
+    if(isCordova) localPath = toInternalURLSync(localPath);
 
     transferOptions = transferOptions || {};
     if(!transferOptions.retry || !transferOptions.retry.length) {
@@ -393,6 +432,8 @@ module.exports = function(options){
     download: download,
     upload: upload,
     toURL:toURL,
+    isCordova:isCordova,
+    toInternalURLSync: toInternalURLSync,
     toInternalURL:toInternalURL,
     toDataURL:toDataURL,
     deviceready: deviceready,
