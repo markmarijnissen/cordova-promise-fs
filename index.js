@@ -82,7 +82,6 @@ module.exports = function(options){
     }
   }
 
-
   /* the filesystem! */
   var fs = new Promise(function(resolve,reject){
     deviceready.then(function(){
@@ -106,8 +105,8 @@ module.exports = function(options){
 
   /* ensure directory exists */
   function ensure(folders) {
-    return fs.then(function(fs){
-      return new Promise(function(resolve,reject){
+    return new Promise(function(resolve,reject){
+      return fs.then(function(fs){
           if(!folders) {
             resolve(fs.root);
           } else {
@@ -116,7 +115,7 @@ module.exports = function(options){
             });
             __createDir(fs.root,folders,resolve,reject);
           }
-        });
+        },reject);
     });
   }
 
@@ -146,30 +145,31 @@ module.exports = function(options){
   }
 
   /* convert path to URL to be used in JS/CSS/HTML */
+  var toInternalURL,toInternalURLSync;
   if(isCordova) {
     /* synchronous helper to get internal URL. */
-    function toInternalURLSync(path){
+    toInternalURLSync = function(path){
       if(path[0] !== '/') path = '/' + path;
       return 'cdvfile://localhost/'+(options.persistent? 'persistent':'temporary') + path;
-    }
+    };
 
-    function toInternalURL(path) {
+    toInternalURL = function(path) {
       return file(path).then(function(fileEntry) {
         return fileEntry.toInternalURL();
       });
-    }
+    };
   } else {
     /* synchronous helper to get internal URL. */
-    function toInternalURLSync(path){
+    toInternalURLSync = function(path){
       if(path[0] !== '/') path = '/' + path;
       return 'filesystem:'+location.origin+(options.persistent? '/persistent':'/temporary') + path;
-    }
+    };
 
-    function toInternalURL(path) {
+    toInternalURL = function(path) {
       return file(path).then(function(fileEntry) {
         return fileEntry.toURL();
       });
-    }
+    };
   } 
 
   /* convert path to base64 date URI */
@@ -346,10 +346,10 @@ module.exports = function(options){
       if(ft._aborted) {
         inprogress--;
       } else if(isDownload){
-        ft.download.call(ft,serverUrl,localPath,win,fail,transferOptions,trustAllHosts);
+        ft.download.call(ft,serverUrl,localPath,win,fail,trustAllHosts,transferOptions);
         if(ft.onprogress) ft.onprogress(new ProgressEvent());
       } else {
-        ft.upload.call(ft,localPath,serverUrl,win,fail,trustAllHosts,transferOptions);
+        ft.upload.call(ft,localPath,serverUrl,win,fail,transferOptions,trustAllHosts);
       }
     }
     // if we are at max concurrency, popTransferQueue() will be called whenever
