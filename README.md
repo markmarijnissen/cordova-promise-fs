@@ -109,6 +109,10 @@ fs.isCordova // is Cordova App?
 
 ## Changelog
 
+### 0.7.0 (14/11/2014)
+
+* bugfix toInternalURL functions and fix download argument order
+
 ### 0.6.0 (13/11/2014)
 
 * Chrome Support!
