@@ -56,7 +56,7 @@ module.exports = function(options){
     });
   } else {
     /* FileTransfer implementation for Chrome */
-    deviceready = Promise.resolve();
+    deviceready = ResolvedPromise(true);
     if(typeof webkitRequestFileSystem !== 'undefined'){
       window.requestFileSystem = webkitRequestFileSystem;
       window.FileTransfer = function FileTransfer(){};
@@ -80,6 +80,13 @@ module.exports = function(options){
         fail(new Error('requestFileSystem not supported!'));
       };
     }
+  }
+
+  /* Promise resolve helper */
+  function ResolvedPromise(value){
+    return new Promise(function(resolve){
+      return resolve(value);
+    });
   }
 
   /* the filesystem! */
@@ -304,7 +311,7 @@ module.exports = function(options){
       return dir(path).then(function(dirEntry){
         var dirReader = dirEntry.createReader();
         dirReader.readEntries(function(entries) {
-          var promises = [Promise.resolve(entries)];
+          var promises = [ResolvedPromise(entries)];
           if(recursive) {
             entries
               .filter(function(entry){return entry.isDirectory; })
