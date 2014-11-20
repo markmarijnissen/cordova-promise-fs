@@ -9,8 +9,11 @@ Are you entangled in a async callback mess to get even the simplest task done? W
 ```bash
   # fetch code using bower
   bower install cordova-promise-fs
+  bower install bluebird # a library that follows the Promise/A+ spec
+
   # ...or npm...
   npm install cordova-promise-fs
+  npm install bluebird # a library that follows the Promise/A+ spec
   
   # install Cordova and plugins
   cordova platform add ios@3.7.0
@@ -33,6 +36,8 @@ var fs = CordovaPromiseFS({
   Promise: require('promiscuous') // Your favorite Promise/A+ library! 
 });
 ```
+
+The Promise option expects a Promise library that follows the [Promise/A+ spec](https://promisesaplus.com/), such as bluebird ([github](https://github.com/petkaantonov/bluebird), [download](https://raw.githubusercontent.com/markmarijnissen/cordova-app-loader/master/www/lib/bluebird.js)), promiscuous ([github](https://github.com/RubenVerborgh/promiscuous),[file](https://raw.githubusercontent.com/RubenVerborgh/promiscuous/master/promiscuous.js)) or [Angular's $q](https://docs.angularjs.org/api/ng/service/$q).
 
 **Note on concurrency:** Concurrent uploads/downloads completely trash your mobile application. That's why I've put a concurrency limit on the number of downloads/uploads. Meteor sets this number on 30. In my experimental testing, I found 3 much more reasonable.
 
