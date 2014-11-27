@@ -75,6 +75,7 @@ module.exports = function(options){
         xhr.send();
         return xhr;
       };
+      window.ProgressEvent = function ProgressEvent(){};
     } else {
       window.requestFileSystem = function(x,y,z,fail){
         fail(new Error('requestFileSystem not supported!'));
@@ -280,9 +281,11 @@ module.exports = function(options){
         if(fileEntry !== false) {
           fileEntry.remove(resolve,reject);
         } else {
-          resolve();
+          resolve(1);
         }
       },reject);
+    }).then(function(val){
+      return val === 1? false: true;
     });
   }
 
@@ -374,7 +377,7 @@ module.exports = function(options){
     if(typeof transferOptions === 'function') {
       onprogress = transferOptions;
       transferOptions = {};
-    }
+    } 
     serverUrl = encodeURI(serverUrl);
     if(isCordova) localPath = toInternalURLSync(localPath);
 
@@ -385,6 +388,7 @@ module.exports = function(options){
     transferOptions.retry = transferOptions.retry.concat();
     
     var ft = new FileTransfer();
+    onprogress = onprogress || transferOptions.onprogress;
     if(typeof onprogress === 'function') ft.onprogress = onprogress;
     var promise = new Promise(function(resolve,reject){
       var attempt = function(err){

@@ -114,6 +114,10 @@ fs.isCordova // is Cordova App?
 
 ## Changelog
 
+### 0.8.0 (27/11/2014)
+
+* Added test-suite, fixed few minor bugs.
+
 ### 0.7.0 (14/11/2014)
 
 * bugfix toInternalURL functions and fix download argument order
@@ -146,6 +150,13 @@ Convert CommonJS to a browser-version:
 ```bash
 npm install webpack -g
 npm run-script prepublish
+```
+
+Run tests: Navigate to `/test/index.html`, for example:
+```bash
+npm install static -g
+static .
+# http://localhost:8080/test/index.html
 ```
 
 Feel free to contribute to this project in any way. The easiest way to support this project is by giving it a star.
