@@ -15,18 +15,20 @@ function __createDir(rootDirEntry, folders, success,error) {
 }
 
 function dirname(str) {
-  var parts = str.split('/');
-  if(parts.length > 1) {
-    parts.splice(parts.length-1,1);
-    return parts.join('/');
-  } else {
-    return '';
-  }
+  str = str.substr(0,str.lastIndexOf('/')+1);
+  if(str[0] === '/') str = str.substr(1);
+  return str;
 }
 
 function filename(str) {
-  var parts = str.split('/');
-  return parts[parts.length-1];
+  return str.substr(str.lastIndexOf('/')+1);
+}
+
+function normalize(str){
+  if(str[0] === '/') str = str.substr(1);
+  if(!!str && str.indexOf('.') < 0 && str[str.length-1] !== '/') str += '/';
+  if(str === './') str = '';
+  return str;
 }
 
 var transferQueue = [], // queued fileTransfers
@@ -39,7 +41,7 @@ module.exports = function(options){
   /* Promise implementation */
   var Promise = options.Promise || window.Promise;
   if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
-  
+
   /* default options */
   this.options = options = options || {};
   options.persistent = options.persistent !== undefined? options.persistent: true;
@@ -105,12 +107,6 @@ module.exports = function(options){
     console.error('Could not get Cordova FileSystem:',err);
   });
 
-  function create(path){
-    return ensure(dirname(path)).then(function(){
-      return file(path,{create:true});
-    });
-  }
-
   /* ensure directory exists */
   function ensure(folders) {
     return new Promise(function(resolve,reject){
@@ -124,6 +120,69 @@ module.exports = function(options){
             __createDir(fs.root,folders,resolve,reject);
           }
         },reject);
+    });
+  }
+
+    /* get file file */
+  function file(path,options){
+    path = normalize(path);
+    options = options || {};
+    return new Promise(function(resolve,reject){
+      return fs.then(function(fs){
+        fs.root.getFile(path,options,resolve,reject);
+      },reject);
+    });
+  }
+
+  /* get directory entry */
+  function dir(path,options){
+    path = normalize(path);
+    options = options || {};
+    return new Promise(function(resolve,reject){
+      return fs.then(function(fs){
+        if(!path || path === '/') {
+          resolve(fs.root);
+        } else {
+          fs.root.getDirectory(path,options,resolve,reject);
+        }
+      },reject);
+    });
+  }
+
+  /* list contents of a directory */
+  function list(path,mode) {
+    mode = mode || '';
+    var recursive = mode.indexOf('r') > -1;
+    var getAsEntries = mode.indexOf('e') > -1;
+    var onlyFiles = mode.indexOf('f') > -1;
+    var onlyDirs = mode.indexOf('d') > -1;
+    if(onlyFiles && onlyDirs) {
+      onlyFiles = false;
+      onlyDirs = false;
+    }
+
+    return new Promise(function(resolve,reject){
+      return dir(path).then(function(dirEntry){
+        var dirReader = dirEntry.createReader();
+        dirReader.readEntries(function(entries) {
+          var promises = [ResolvedPromise(entries)];
+          if(recursive) {
+            entries
+              .filter(function(entry){return entry.isDirectory; })
+              .forEach(function(entry){
+                promises.push(list(entry.fullPath,'re'));
+              });
+          }
+          Promise.all(promises).then(function(values){
+              var entries = [];
+              entries = entries.concat.apply(entries,values);
+              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
+              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
+              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+              resolve(entries);
+            },reject);
+        }, reject);
+      },reject);
     });
   }
 
@@ -145,6 +204,12 @@ module.exports = function(options){
     });
   }
 
+  function create(path){
+    return ensure(dirname(path)).then(function(){
+      return file(path,{create:true});
+    });
+  }
+
   /* convert path to URL to be used in JS/CSS/HTML */
   function toURL(path) {
     return file(path).then(function(fileEntry) {
@@ -157,8 +222,8 @@ module.exports = function(options){
   if(isCordova) {
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
-      if(path[0] !== '/') path = '/' + path;
-      return 'cdvfile://localhost/'+(options.persistent? 'persistent':'temporary') + path;
+      path = normalize(path);
+      return 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/') + path;
     };
 
     toInternalURL = function(path) {
@@ -169,8 +234,8 @@ module.exports = function(options){
   } else {
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
-      if(path[0] !== '/') path = '/' + path;
-      return 'filesystem:'+location.origin+(options.persistent? '/persistent':'/temporary') + path;
+      path = normalize(path);
+      return 'filesystem:'+location.origin+(options.persistent? '/persistent/':'/temporary/') + path;
     };
 
     toInternalURL = function(path) {
@@ -178,35 +243,6 @@ module.exports = function(options){
         return fileEntry.toURL();
       });
     };
-  } 
-
-  /* convert path to base64 date URI */
-  function toDataURL(path) {
-    return read(path,'readAsDataURL');
-  }
-
-  /* get file file */
-  function file(path,options){
-    options = options || {};
-    return new Promise(function(resolve,reject){
-      return fs.then(function(fs){
-        fs.root.getFile(path,options,resolve,reject);
-      },reject);
-    });
-  }
-
-  /* get directory entry */
-  function dir(path,options){
-    options = options || {};
-    return new Promise(function(resolve,reject){
-      return fs.then(function(fs){
-        if(!path || path === '/') {
-          resolve(fs.root);
-        } else {
-          fs.root.getDirectory(path,options,resolve,reject);
-        }
-      },reject);
-    });
   }
 
   /* return contents of a file */
@@ -224,6 +260,12 @@ module.exports = function(options){
       });
     });
   }
+
+  /* convert path to base64 date URI */
+  function toDataURL(path) {
+    return read(path,'readAsDataURL');
+  }
+
 
   function readJSON(path){
     return read(path).then(JSON.parse);
@@ -298,50 +340,13 @@ module.exports = function(options){
     });
   }
 
-  /* list contents of a directory */
-  function list(path,mode) {
-    mode = mode || '';
-    var recursive = mode.indexOf('r') > -1;
-    var getAsEntries = mode.indexOf('e') > -1;
-    var onlyFiles = mode.indexOf('f') > -1;
-    var onlyDirs = mode.indexOf('d') > -1;
-    if(onlyFiles && onlyDirs) {
-      onlyFiles = false;
-      onlyDirs = false;
-    }
-
-    return new Promise(function(resolve,reject){
-      return dir(path).then(function(dirEntry){
-        var dirReader = dirEntry.createReader();
-        dirReader.readEntries(function(entries) {
-          var promises = [ResolvedPromise(entries)];
-          if(recursive) {
-            entries
-              .filter(function(entry){return entry.isDirectory; })
-              .forEach(function(entry){
-                promises.push(list(entry.fullPath,'re'));
-              });
-          }
-          Promise.all(promises).then(function(values){
-              var entries = [];
-              entries = entries.concat.apply(entries,values);
-              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
-              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
-              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
-              resolve(entries);
-            },reject);
-        }, reject);
-      },reject);
-    });
-  }
-
   // Whenever we want to start a transfer, we call popTransferQueue
   function popTransferQueue(){
     // while we are not at max concurrency
     while(transferQueue.length > 0 && inprogress < options.concurrency){
       // increment activity counter
       inprogress++;
-      
+
       // fetch filetranfer, method-type (isDownload) and arguments
       var args = transferQueue.pop();
       var ft = args.shift();
@@ -352,7 +357,7 @@ module.exports = function(options){
       var fail = args.shift();
       var trustAllHosts = args.shift();
       var transferOptions = args.shift();
-      
+
       if(ft._aborted) {
         inprogress--;
       } else if(isDownload){
@@ -366,7 +371,7 @@ module.exports = function(options){
     // the transfer is ready and there is space avaialable.
   }
 
-  // Promise callback to check if there are any more queued transfers 
+  // Promise callback to check if there are any more queued transfers
   function nextTransfer(result){
     inprogress--; // decrement counter to free up one space to start transfers again!
     popTransferQueue(); // check if there are any queued transfers
@@ -377,7 +382,7 @@ module.exports = function(options){
     if(typeof transferOptions === 'function') {
       onprogress = transferOptions;
       transferOptions = {};
-    } 
+    }
     serverUrl = encodeURI(serverUrl);
     if(isCordova) localPath = toInternalURLSync(localPath);
 
@@ -386,7 +391,7 @@ module.exports = function(options){
       transferOptions.retry = options.retry;
     }
     transferOptions.retry = transferOptions.retry.concat();
-    
+
     var ft = new FileTransfer();
     onprogress = onprogress || transferOptions.onprogress;
     if(typeof onprogress === 'function') ft.onprogress = onprogress;
@@ -431,6 +436,7 @@ module.exports = function(options){
 
   return {
     fs: fs,
+    normalize: normalize,
     file: file,
     filename: filename,
     dir: dir,

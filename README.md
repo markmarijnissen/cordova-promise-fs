@@ -112,7 +112,35 @@ fs.options // options
 fs.isCordova // is Cordova App?
 ```
 
+### Normalized path
+
+In CordovaPromiseFS, all filenames and paths are normalized:
+
+* Directories should end with a `/`.
+* Filenames and directories should never start with a `/`.
+* `"./"` is converted to `""`
+
+This allows you to concatenate normalized paths, i.e.
+```javascript
+normalize('dir1/dir2') === normalize('dir1') + normalize('dir2') === 'dir1/dir2/';
+```
+
+If you're storing or saving paths, it is recommended to `normalize` them first to avoid comparison problems. (i.e. paths are not recognized as the same because of a missing trailing slash).
+
+Beware: the original `entry.fullPath` might return a path which starts with a `/`. This causes problems on Android, i.e.
+
+```javascript
+var path = filesystem.root.fullPath; // returns something starting with a `/`
+filesystem.root.getDirectory(path); // NullPointer error in android. Stupid!
+```
+
+This problem is solved in CordovaPromiseFS.
+
 ## Changelog
+
+### 0.9.0 (28/11/2014)
+
+* Normalize path everywhere.
 
 ### 0.8.0 (27/11/2014)
 
