@@ -138,6 +138,10 @@ This problem is solved in CordovaPromiseFS.
 
 ## Changelog
 
+### 0.10.0 (21/12/2014)
+
+* Support for other fileSystems (undocumented hack)
+
 ### 0.9.0 (28/11/2014)
 
 * Normalize path everywhere.
