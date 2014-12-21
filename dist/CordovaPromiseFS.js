@@ -72,6 +72,7 @@ var CordovaPromiseFS =
 	}
 
 	function normalize(str){
+	  str = str || '';
 	  if(str[0] === '/') str = str.substr(1);
 	  if(!!str && str.indexOf('.') < 0 && str[str.length-1] !== '/') str += '/';
 	  if(str === './') str = '';
@@ -112,10 +113,11 @@ var CordovaPromiseFS =
 	      FileTransfer.prototype.download = function download(url,file,win,fail) {
 	        var xhr = new XMLHttpRequest();
 	        xhr.open('GET', url);
+	        xhr.responseType = "blob";
 	        xhr.onreadystatechange = function(onSuccess, onError, cb) {
 	          if (xhr.readyState == 4) {
 	            if(xhr.status === 200){
-	              write(file,xhr.responseText).then(win,fail);
+	              write(file,xhr.response).then(win,fail);
 	            } else {
 	              fail(xhr.status);
 	            }
@@ -142,7 +144,16 @@ var CordovaPromiseFS =
 	  /* the filesystem! */
 	  var fs = new Promise(function(resolve,reject){
 	    deviceready.then(function(){
-	      window.requestFileSystem(options.persistent? 1: 0, options.storageSize, resolve, reject);
+	      var type = options.persistent? 1: 0;
+	      if(typeof options.fileSystem === 'number'){
+	        type = options.fileSystem;
+	      }
+	      // Chrome only supports persistent and temp storage, not the exotic onces from Cordova
+	      if(!isCordova && type > 1) {
+	        console.warn('Chrome does not support fileSystem "'+type+'". Falling back on "0" (temporary).');
+	        type = 0;
+	      }
+	      window.requestFileSystem(type, options.storageSize, resolve, reject);
 	      setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
 	    },reject);
 	  });
@@ -172,9 +183,12 @@ var CordovaPromiseFS =
 
 	    /* get file file */
 	  function file(path,options){
-	    path = normalize(path);
-	    options = options || {};
 	    return new Promise(function(resolve,reject){
+	      if(path instanceof FileEntry) {
+	        return resolve(path);
+	      }
+	      path = normalize(path);
+	      options = options || {};
 	      return fs.then(function(fs){
 	        fs.root.getFile(path,options,resolve,reject);
 	      },reject);
