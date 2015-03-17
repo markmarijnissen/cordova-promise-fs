@@ -80,6 +80,7 @@ module.exports = function(options){
         return xhr;
       };
       window.ProgressEvent = function ProgressEvent(){};
+      window.FileEntry = function FileEntry(){};
     } else {
       window.requestFileSystem = function(x,y,z,fail){
         fail(new Error('requestFileSystem not supported!'));
@@ -137,7 +138,7 @@ module.exports = function(options){
     /* get file file */
   function file(path,options){
     return new Promise(function(resolve,reject){
-      if(path instanceof FileEntry) {
+      if(typeof path === 'object') {
         return resolve(path);
       }
       path = normalize(path);
@@ -237,7 +238,7 @@ module.exports = function(options){
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
       path = normalize(path);
-      return 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/') + path;
+      return path.indexOf('://') < 0? 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/') + path: path;
     };
 
     toInternalURL = function(path) {
@@ -405,6 +406,9 @@ module.exports = function(options){
       transferOptions.retry = options.retry;
     }
     transferOptions.retry = transferOptions.retry.concat();
+    if(!transferOptions.file && !isDownload){
+      transferOptions.fileName = filename(localPath);
+    }
 
     var ft = new FileTransfer();
     onprogress = onprogress || transferOptions.onprogress;
