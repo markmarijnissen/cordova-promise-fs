@@ -285,7 +285,7 @@ var CordovaPromiseFS =
 	    /* synchronous helper to get internal URL. */
 	    toInternalURLSync = function(path){
 	      path = normalize(path);
-	      return 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/') + path;
+	      return path.indexOf('://') < 0? 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/') + path: path;
 	    };
 
 	    toInternalURL = function(path) {
@@ -452,6 +452,9 @@ var CordovaPromiseFS =
 	      transferOptions.retry = options.retry;
 	    }
 	    transferOptions.retry = transferOptions.retry.concat();
+	    if(!transferOptions.file && !isDownload){
+	      transferOptions.fileName = filename(localPath);
+	    }
 
 	    var ft = new FileTransfer();
 	    onprogress = onprogress || transferOptions.onprogress;
@@ -525,6 +528,7 @@ var CordovaPromiseFS =
 	    Promise: Promise
 	  };
 	};
+
 
 /***/ }
 /******/ ]);
