@@ -444,7 +444,6 @@ var CordovaPromiseFS =
 	      onprogress = transferOptions;
 	      transferOptions = {};
 	    }
-	    serverUrl = encodeURI(serverUrl);
 	    if(isCordova && localPath.indexOf('://') < 0) localPath = toInternalURLSync(localPath);
 
 	    transferOptions = transferOptions || {};
