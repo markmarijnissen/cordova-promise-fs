@@ -127,7 +127,7 @@ module.exports = function(options){
             resolve(fs.root);
           } else {
             folders = folders.split('/').filter(function(folder) {
-              return folder && folder.length > 0 && folder[0] !== '.';
+              return folder && folder.length > 0 && folder !== '.' && folder !== '..';
             });
             __createDir(fs.root,folders,resolve,reject);
           }
