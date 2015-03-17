@@ -398,8 +398,7 @@ module.exports = function(options){
       onprogress = transferOptions;
       transferOptions = {};
     }
-    serverUrl = encodeURI(serverUrl);
-    if(isCordova) localPath = toInternalURLSync(localPath);
+    if(isCordova && localPath.indexOf('://') < 0) localPath = toInternalURLSync(localPath);
 
     transferOptions = transferOptions || {};
     if(!transferOptions.retry || !transferOptions.retry.length) {
