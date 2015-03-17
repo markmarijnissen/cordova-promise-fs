@@ -138,6 +138,14 @@ This problem is solved in CordovaPromiseFS.
 
 ## Changelog
 
+### 0.12.0 (17/03/2015)
+
+* Merged pull request from @jakgra. Now you can write to hidden folders on Android. Thanks!
+
+### 0.11.0 (17/03/2015)
+
+* Minor improvements in upload
+
 ### 0.10.0 (21/12/2014)
 
 * Support for other fileSystems (undocumented hack)
