@@ -99,7 +99,7 @@ module.exports = function(options){
   var fs = new Promise(function(resolve,reject){
     deviceready.then(function(){
       var type = options.persistent? 1: 0;
-      if(typeof options.fileSystem === 'number'){
+      if(options.fileSystem){
         type = options.fileSystem;
       }
       // Chrome only supports persistent and temp storage, not the exotic onces from Cordova
@@ -107,7 +107,14 @@ module.exports = function(options){
         console.warn('Chrome does not support fileSystem "'+type+'". Falling back on "0" (temporary).');
         type = 0;
       }
-      window.requestFileSystem(type, options.storageSize, resolve, reject);
+        if(isNaN(type)) {
+            window.resolveLocalFileSystemURL(type,function(directory){
+                resolve(directory.filesystem);
+            },reject);
+        }else{
+            window.requestFileSystem(type, options.storageSize, resolve, reject);
+        }
+
       setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
     },reject);
   });
