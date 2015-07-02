@@ -1,5 +1,17 @@
 cordova-promise-fs
 ==========
+
+This is a fork of Mark Marijnissens cordova-promise-fs (https://github.com/markmarijnissen/cordova-promise-fs).
+Sadly, Mark currently seems to be unable to maintain the project.
+
+## Building the project
+
+```bash
+grunt build
+```
+
+# Original Documentation
+
 > Wraps the Cordova (and Chrome) File API in convenient functions (that return a Promise)
 
 Are you entangled in a async callback mess to get even the simplest task done? Wait no longer -- here is **cordova-promise-fs**!
