@@ -27,7 +27,25 @@ function filename(str) {
 function normalize(str) {
     str = str || '';
     if (str[0] === '/') str = str.substr(1);
-    if (!!str && str.indexOf('.') < 0 && str[str.length - 1] !== '/') str += '/';
+
+    var tokens = str.split('/');
+    // check tokens for instances of .. and .
+    for (var i = 1; i < tokens.length; i++) {
+        if (tokens[i] === '..') {
+            // remove the .. and the previous token
+            tokens.splice(i - 1, 2);
+            // rewind 'cursor' 2 tokens
+            i = i - 2;
+        } else if (tokens[i] === '.') {
+            // remove the .. and the previous token
+            tokens.splice(i, 1);
+            // rewind 'cursor' 1 token
+            i--;
+        }
+    }
+
+    str = tokens.join('/');
+
     if (str === './') str = '';
     return str;
 }
