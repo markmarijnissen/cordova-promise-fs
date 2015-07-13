@@ -4,7 +4,9 @@
 
 /* createDir, recursively */
 function __createDir(rootDirEntry, folders, success, error) {
-    rootDirEntry.getDirectory(folders[0], {create: true}, function (dirEntry) {
+    rootDirEntry.getDirectory(folders[0], {
+        create: true
+    }, function(dirEntry) {
         // Recursively add the new subfolder (if we still have another to create).
         if (folders.length > 1) {
             __createDir(dirEntry, folders.slice(1), success, error);
@@ -51,12 +53,12 @@ function normalize(str) {
 }
 
 var transferQueue = [], // queued fileTransfers
-    inprogress = 0;     // currently active filetransfers
+    inprogress = 0; // currently active filetransfers
 
 /**
  * Factory function: Create a single instance (based on single FileSystem)
  */
-module.exports = function (options) {
+module.exports = function(options) {
     /* Promise implementation */
     var Promise = options.Promise || window.Promise;
     if (!Promise) {
@@ -73,9 +75,9 @@ module.exports = function (options) {
     /* Cordova deviceready promise */
     var deviceready, isCordova = typeof cordova !== 'undefined';
     if (isCordova) {
-        deviceready = new Promise(function (resolve, reject) {
+        deviceready = new Promise(function(resolve, reject) {
             document.addEventListener("deviceready", resolve, false);
-            setTimeout(function () {
+            setTimeout(function() {
                 reject(new Error('deviceready has not fired after 5 seconds.'));
             }, 5100);
         });
@@ -84,16 +86,16 @@ module.exports = function (options) {
         deviceready = ResolvedPromise(true);
         if (typeof webkitRequestFileSystem !== 'undefined') {
             window.requestFileSystem = webkitRequestFileSystem;
-            window.FileTransfer = function FileTransfer() {
-            };
+            window.FileTransfer = function FileTransfer() {};
             FileTransfer.prototype.download = function download(url, file, win, fail) {
                 var xhr = new XMLHttpRequest();
                 xhr.open('GET', url);
                 xhr.responseType = "blob";
-                xhr.onreadystatechange = function (onSuccess, onError, cb) {
+                xhr.onreadystatechange = function(onSuccess, onError, cb) {
                     if (xhr.readyState == 4) {
                         if (xhr.status === 200) {
-                            write(file, xhr.response).then(win, fail);
+                            write(file, xhr.response)
+                                .then(win, fail);
                         } else {
                             fail(xhr.status);
                         }
@@ -102,12 +104,10 @@ module.exports = function (options) {
                 xhr.send();
                 return xhr;
             };
-            window.ProgressEvent = function ProgressEvent() {
-            };
-            window.FileEntry = function FileEntry() {
-            };
+            window.ProgressEvent = function ProgressEvent() {};
+            window.FileEntry = function FileEntry() {};
         } else {
-            window.requestFileSystem = function (x, y, z, fail) {
+            window.requestFileSystem = function(x, y, z, fail) {
                 fail(new Error('requestFileSystem not supported!'));
             };
         }
@@ -115,14 +115,14 @@ module.exports = function (options) {
 
     /* Promise resolve helper */
     function ResolvedPromise(value) {
-        return new Promise(function (resolve) {
+        return new Promise(function(resolve) {
             return resolve(value);
         });
     }
 
     /* the filesystem! */
-    var fs = new Promise(function (resolve, reject) {
-        deviceready.then(function () {
+    var fs = new Promise(function(resolve, reject) {
+        deviceready.then(function() {
             var type = options.persistent ? 1 : 0;
             if (options.fileSystem) {
                 type = options.fileSystem;
@@ -133,35 +133,36 @@ module.exports = function (options) {
                 type = 0;
             }
             if (isNaN(type)) {
-                window.resolveLocalFileSystemURL(type, function (directory) {
+                window.resolveLocalFileSystemURL(type, function(directory) {
                     resolve(directory.filesystem);
                 }, reject);
             } else {
                 window.requestFileSystem(type, options.storageSize, resolve, reject);
             }
-            setTimeout(function () {
+            setTimeout(function() {
                 reject(new Error('Could not retrieve FileSystem after 5 seconds.'));
             }, 5100);
         }, reject);
     });
 
     /* debug */
-    fs.then(function (fs) {
+    fs.then(function(fs) {
         window.__fs = fs;
-    }, function (err) {
+    }, function(err) {
         console.error('Could not get Cordova FileSystem:', err);
     });
 
     /* ensure directory exists */
     function ensure(folders) {
-        return new Promise(function (resolve, reject) {
-            return fs.then(function (fs) {
+        return new Promise(function(resolve, reject) {
+            return fs.then(function(fs) {
                 if (!folders) {
                     resolve(fs.root);
                 } else {
-                    folders = folders.split('/').filter(function (folder) {
-                        return folder && folder.length > 0 && folder !== '.' && folder !== '..';
-                    });
+                    folders = folders.split('/')
+                        .filter(function(folder) {
+                            return folder && folder.length > 0 && folder !== '.' && folder !== '..';
+                        });
                     __createDir(fs.root, folders, resolve, reject);
                 }
             }, reject);
@@ -170,13 +171,13 @@ module.exports = function (options) {
 
     /* get file file */
     function file(path, options) {
-        return new Promise(function (resolve, reject) {
+        return new Promise(function(resolve, reject) {
             if (typeof path === 'object') {
                 return resolve(path);
             }
             path = normalize(path);
             options = options || {};
-            return fs.then(function (fs) {
+            return fs.then(function(fs) {
                 fs.root.getFile(path, options, resolve, reject);
             }, reject);
         });
@@ -192,8 +193,8 @@ module.exports = function (options) {
         }
 
         options = options || {};
-        return new Promise(function (resolve, reject) {
-            return fs.then(function (fs) {
+        return new Promise(function(resolve, reject) {
+            return fs.then(function(fs) {
                 if (!path || path === '/') {
                     resolve(fs.root);
                 } else {
@@ -215,112 +216,122 @@ module.exports = function (options) {
             onlyDirs = false;
         }
 
-        return new Promise(function (resolve, reject) {
-            return dir(path).then(function (dirEntry) {
-                var dirReader = dirEntry.createReader();
-                dirReader.readEntries(function (entries) {
-                    var promises = [ResolvedPromise(entries)];
-                    if (recursive) {
-                        entries
-                            .filter(function (entry) {
-                                return entry.isDirectory;
-                            })
-                            .forEach(function (entry) {
-                                promises.push(list(entry.fullPath, 're'));
-                            });
-                    }
-                    Promise.all(promises).then(function (values) {
-                        var entries = [];
-                        entries = entries.concat.apply(entries, values);
-                        if (onlyFiles) entries = entries.filter(function (entry) {
-                            return entry.isFile;
-                        });
-                        if (onlyDirs) entries = entries.filter(function (entry) {
-                            return entry.isDirectory;
-                        });
-                        if (!getAsEntries) entries = entries.map(function (entry) {
-                            return entry.fullPath;
-                        });
-                        resolve(entries);
+        return new Promise(function(resolve, reject) {
+            return dir(path)
+                .then(function(dirEntry) {
+                    var dirReader = dirEntry.createReader();
+                    dirReader.readEntries(function(entries) {
+                        var promises = [ResolvedPromise(entries)];
+                        if (recursive) {
+                            entries
+                                .filter(function(entry) {
+                                    return entry.isDirectory;
+                                })
+                                .forEach(function(entry) {
+                                    promises.push(list(entry.fullPath, 're'));
+                                });
+                        }
+                        Promise.all(promises)
+                            .then(function(values) {
+                                var entries = [];
+                                entries = entries.concat.apply(entries, values);
+                                if (onlyFiles) entries = entries.filter(function(entry) {
+                                    return entry.isFile;
+                                });
+                                if (onlyDirs) entries = entries.filter(function(entry) {
+                                    return entry.isDirectory;
+                                });
+                                if (!getAsEntries) entries = entries.map(function(entry) {
+                                    return entry.fullPath;
+                                });
+                                resolve(entries);
+                            }, reject);
                     }, reject);
                 }, reject);
-            }, reject);
         });
     }
 
     /* does file exist? If so, resolve with fileEntry, if not, resolve with false. */
     function exists(path) {
-        return new Promise(function (resolve, reject) {
-            file(path).then(
-                function (fileEntry) {
-                    resolve(fileEntry);
-                },
-                function (err) {
-                    if (err.code === 1) {
-                        resolve(false);
-                    } else {
-                        reject(err);
+        return new Promise(function(resolve, reject) {
+            file(path)
+                .then(
+                    function(fileEntry) {
+                        resolve(fileEntry);
+                    },
+                    function(err) {
+                        if (err.code === 1) {
+                            resolve(false);
+                        } else {
+                            reject(err);
+                        }
                     }
-                }
-            );
+                );
         });
     }
 
     function create(path) {
-        return ensure(dirname(path)).then(function () {
-            return file(path, {create: true});
-        });
+        return ensure(dirname(path))
+            .then(function() {
+                return file(path, {
+                    create: true
+                });
+            });
     }
 
     /* convert path to URL to be used in JS/CSS/HTML */
     function toURL(path) {
-        return file(path).then(function (fileEntry) {
-            return fileEntry.toURL();
-        });
+        return file(path)
+            .then(function(fileEntry) {
+                return fileEntry.toURL();
+            });
     }
 
     /* convert path to URL to be used in JS/CSS/HTML */
     var toInternalURL, toInternalURLSync;
     if (isCordova) {
         /* synchronous helper to get internal URL. */
-        toInternalURLSync = function (path) {
+        toInternalURLSync = function(path) {
             path = normalize(path);
             return path.indexOf('://') < 0 ? 'cdvfile://localhost/' + (options.persistent ? 'persistent/' : 'temporary/') + path : path;
         };
 
-        toInternalURL = function (path) {
-            return file(path).then(function (fileEntry) {
-                return fileEntry.toInternalURL();
-            });
+        toInternalURL = function(path) {
+            return file(path)
+                .then(function(fileEntry) {
+                    return fileEntry.toInternalURL();
+                });
         };
     } else {
         /* synchronous helper to get internal URL. */
-        toInternalURLSync = function (path) {
+        toInternalURLSync = function(path) {
             path = normalize(path);
             return 'filesystem:' + location.origin + (options.persistent ? '/persistent/' : '/temporary/') + path;
         };
 
-        toInternalURL = function (path) {
-            return file(path).then(function (fileEntry) {
-                return fileEntry.toURL();
-            });
+        toInternalURL = function(path) {
+            return file(path)
+                .then(function(fileEntry) {
+                    return fileEntry.toURL();
+                });
         };
     }
 
     /* return contents of a file */
     function read(path, method) {
         method = method || 'readAsText';
-        return file(path).then(function (fileEntry) {
-            return new Promise(function (resolve, reject) {
-                fileEntry.file(function (file) {
-                    var reader = new FileReader();
-                    reader.onloadend = function () {
-                        resolve(this.result);
-                    };
-                    reader[method](file);
-                }, reject);
+        return file(path)
+            .then(function(fileEntry) {
+                return new Promise(function(resolve, reject) {
+                    fileEntry.file(function(file) {
+                        var reader = new FileReader();
+                        reader.onloadend = function() {
+                            resolve(this.result);
+                        };
+                        reader[method](file);
+                    }, reject);
+                });
             });
-        });
     }
 
     /* convert path to base64 date URI */
@@ -330,18 +341,21 @@ module.exports = function (options) {
 
 
     function readJSON(path) {
-        return read(path).then(JSON.parse);
+        return read(path)
+            .then(JSON.parse);
     }
 
     /* write contents to a file */
     function write(path, blob, mimeType) {
         return ensure(dirname(path))
-            .then(function () {
-                return file(path, {create: true});
+            .then(function() {
+                return file(path, {
+                    create: true
+                });
             })
-            .then(function (fileEntry) {
-                return new Promise(function (resolve, reject) {
-                    fileEntry.createWriter(function (writer) {
+            .then(function(fileEntry) {
+                return new Promise(function(resolve, reject) {
+                    fileEntry.createWriter(function(writer) {
                         writer.onwriteend = resolve;
                         writer.onerror = reject;
                         if (typeof blob === 'string') {
@@ -359,12 +373,14 @@ module.exports = function (options) {
         var BlobBuilder,
             bb;
         try {
-            return new Blob(parts, {type: type});
+            return new Blob(parts, {
+                type: type
+            });
         } catch (e) {
             BlobBuilder = window.BlobBuilder ||
-            window.WebKitBlobBuilder ||
-            window.MozBlobBuilder ||
-            window.MSBlobBuilder;
+                window.WebKitBlobBuilder ||
+                window.MozBlobBuilder ||
+                window.MSBlobBuilder;
             if (BlobBuilder) {
                 bb = new BlobBuilder();
                 bb.append(parts);
@@ -378,50 +394,55 @@ module.exports = function (options) {
     /* move a file */
     function move(src, dest) {
         return ensure(dirname(dest))
-            .then(function (dir) {
-                return file(src).then(function (fileEntry) {
-                    return new Promise(function (resolve, reject) {
-                        fileEntry.moveTo(dir, filename(dest), resolve, reject);
+            .then(function(dir) {
+                return file(src)
+                    .then(function(fileEntry) {
+                        return new Promise(function(resolve, reject) {
+                            fileEntry.moveTo(dir, filename(dest), resolve, reject);
+                        });
                     });
-                });
             });
     }
 
     /* copy a file */
     function copy(src, dest) {
         return ensure(dirname(dest))
-            .then(function (dir) {
-                return file(src).then(function (fileEntry) {
-                    return new Promise(function (resolve, reject) {
-                        fileEntry.copyTo(dir, filename(dest), resolve, reject);
+            .then(function(dir) {
+                return file(src)
+                    .then(function(fileEntry) {
+                        return new Promise(function(resolve, reject) {
+                            fileEntry.copyTo(dir, filename(dest), resolve, reject);
+                        });
                     });
-                });
             });
     }
 
     /* delete a file */
     function remove(path, mustExist) {
         var method = mustExist ? file : exists;
-        return new Promise(function (resolve, reject) {
-            method(path).then(function (fileEntry) {
-                if (fileEntry !== false) {
-                    fileEntry.remove(resolve, reject);
-                } else {
-                    resolve(1);
-                }
-            }, reject);
-        }).then(function (val) {
+        return new Promise(function(resolve, reject) {
+                method(path)
+                    .then(function(fileEntry) {
+                        if (fileEntry !== false) {
+                            fileEntry.remove(resolve, reject);
+                        } else {
+                            resolve(1);
+                        }
+                    }, reject);
+            })
+            .then(function(val) {
                 return val === 1 ? false : true;
             });
     }
 
     /* delete a directory */
     function removeDir(path) {
-        return dir(path).then(function (dirEntry) {
-            return new Promise(function (resolve, reject) {
-                dirEntry.removeRecursively(resolve, reject);
+        return dir(path)
+            .then(function(dirEntry) {
+                return new Promise(function(resolve, reject) {
+                    dirEntry.removeRecursively(resolve, reject);
+                });
             });
-        });
     }
 
     // Whenever we want to start a transfer, we call popTransferQueue
@@ -481,8 +502,8 @@ module.exports = function (options) {
         var ft = new FileTransfer();
         onprogress = onprogress || transferOptions.onprogress;
         if (typeof onprogress === 'function') ft.onprogress = onprogress;
-        var promise = new Promise(function (resolve, reject) {
-            var attempt = function (err) {
+        var promise = new Promise(function(resolve, reject) {
+            var attempt = function(err) {
                 if (transferOptions.retry.length === 0) {
                     reject(err);
                 } else {
@@ -500,11 +521,11 @@ module.exports = function (options) {
             attempt();
         });
         promise.then(nextTransfer, nextTransfer);
-        promise.progress = function (onprogress) {
+        promise.progress = function(onprogress) {
             ft.onprogress = onprogress;
             return promise;
         };
-        promise.abort = function () {
+        promise.abort = function() {
             ft._aborted = true;
             ft.abort();
             return promise;

@@ -1,6 +1,6 @@
 'use strict';
 
-module.exports = function (grunt) {
+module.exports = function(grunt) {
 
     // Load grunt tasks automatically
     require('load-grunt-tasks')(grunt);
@@ -15,34 +15,32 @@ module.exports = function (grunt) {
         // Empties folders to start fresh
         clean: {
             dist: {
-                files: [
-                    {
-                        dot: true,
-                        src: [
-                            '.tmp',
-                            'dist/{,*/}*',
-                            '!dist/.git*'
-                        ]
-                    }
-                ]
+                files: [{
+                    dot: true,
+                    src: [
+                        '.tmp',
+                        'dist/{,*/}*',
+                        '!dist/.git*'
+                    ]
+                }]
             }
         },
 
         copy: {
             dist: {
                 files: {
-                    'dist/<%= pkg.name %>.js': ['index.js']
+                    'dist/<%= pkg.name %>.js': ['src/index.js']
                 }
             }
         },
 
         // automatically update npm and bower packages according to package.json and bower.json
-        auto_install : {
-            options : {
-                cwd : '',
-                stdout : true,
-                stderr : true,
-                failOnError : true
+        auto_install: {
+            options: {
+                cwd: '',
+                stdout: true,
+                stderr: true,
+                failOnError: true
             }
         },
 
@@ -53,7 +51,7 @@ module.exports = function (grunt) {
             },
             dist: {
                 files: {
-                    'dist/<%= pkg.name %>.min.js': ['index.js']
+                    'dist/<%= pkg.name %>.min.js': ['src/index.js']
                 }
             }
         }
