@@ -54,20 +54,32 @@ module.exports = function(grunt) {
                     'dist/<%= pkg.name %>.min.js': ['src/index.js']
                 }
             }
-        }
-    });
+        },
 
-    grunt.registerTask('build', [
-        'clean:dist',
-        'auto_install',
-        'uglify:dist',
-        'copy:dist'
-    ]);
+        jshint: {
+            options: {
+                reporter: 'checkstyle',
+                reporterOutput : 'dist/reports/jshint-output.xml',
+                jshintrc: '.jshintrc'
+            },
+            all: {
+                src: [
+                    'src/{,**/*}*.js'
+                ]
+            }
+        },
+    });
 
     grunt.registerTask('default', [
         'clean:dist',
         'auto_install',
+        'jshint',
         'uglify:dist',
         'copy:dist'
     ]);
+    
+    grunt.registerTask('build', [
+        'default'
+    ]);
+    
 };
