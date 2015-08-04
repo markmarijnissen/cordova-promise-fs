@@ -219,6 +219,24 @@ module.exports = function(options){
     });
   }
 
+  /* does dir exist? If so, resolve with fileEntry, if not, resolve with false. */
+  function existsDir(path){
+    return new Promise(function(resolve,reject){
+      dir(path).then(
+        function(dirEntry){
+          resolve(dirEntry);
+        },
+        function(err){
+          if(err.code === 1) {
+            resolve(false);
+          } else {
+            reject(err);
+          }
+        }
+      );
+    });
+  }
+
   function create(path){
     return ensure(dirname(path)).then(function(){
       return file(path,{create:true});
@@ -313,6 +331,20 @@ module.exports = function(options){
         return file(src).then(function(fileEntry){
           return new Promise(function(resolve,reject){
             fileEntry.moveTo(dir,filename(dest),resolve,reject);
+          });
+        });
+      });
+  }
+
+  /* move a dir */
+  function moveDir(src,dest) {
+    src = src.replace(/\/$/, '');
+    dest = dest.replace(/\/$/, '');
+    return ensure(dirname(dest))
+      .then(function(destDir) {
+        return dir(src).then(function(dirEntry){
+          return new Promise(function(resolve,reject){
+            dirEntry.moveTo(destDir,filename(dest),resolve,reject);
           });
         });
       });
@@ -463,12 +495,14 @@ module.exports = function(options){
     readJSON: readJSON,
     write: write,
     move: move,
+    moveDir: moveDir,
     copy: copy,
     remove: remove,
     removeDir: removeDir,
     list: list,
     ensure: ensure,
     exists: exists,
+    existsDir: existsDir,
     download: download,
     upload: upload,
     toURL:toURL,

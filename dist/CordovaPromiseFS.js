@@ -43,7 +43,7 @@ var CordovaPromiseFS =
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/**
 	 * Static Private functions
@@ -174,7 +174,7 @@ var CordovaPromiseFS =
 	            resolve(fs.root);
 	          } else {
 	            folders = folders.split('/').filter(function(folder) {
-	              return folder && folder.length > 0 && folder[0] !== '.';
+	              return folder && folder.length > 0 && folder !== '.' && folder !== '..';
 	            });
 	            __createDir(fs.root,folders,resolve,reject);
 	          }
@@ -254,6 +254,24 @@ var CordovaPromiseFS =
 	      file(path).then(
 	        function(fileEntry){
 	          resolve(fileEntry);
+	        },
+	        function(err){
+	          if(err.code === 1) {
+	            resolve(false);
+	          } else {
+	            reject(err);
+	          }
+	        }
+	      );
+	    });
+	  }
+
+	  /* does dir exist? If so, resolve with fileEntry, if not, resolve with false. */
+	  function existsDir(path){
+	    return new Promise(function(resolve,reject){
+	      dir(path).then(
+	        function(dirEntry){
+	          resolve(dirEntry);
 	        },
 	        function(err){
 	          if(err.code === 1) {
@@ -360,6 +378,20 @@ var CordovaPromiseFS =
 	        return file(src).then(function(fileEntry){
 	          return new Promise(function(resolve,reject){
 	            fileEntry.moveTo(dir,filename(dest),resolve,reject);
+	          });
+	        });
+	      });
+	  }
+
+	  /* move a dir */
+	  function moveDir(src,dest) {
+	    src = src.replace(/\/$/, '');
+	    dest = dest.replace(/\/$/, '');
+	    return ensure(dirname(dest))
+	      .then(function(destDir) {
+	        return dir(src).then(function(dirEntry){
+	          return new Promise(function(resolve,reject){
+	            dirEntry.moveTo(destDir,filename(dest),resolve,reject);
 	          });
 	        });
 	      });
@@ -510,12 +542,14 @@ var CordovaPromiseFS =
 	    readJSON: readJSON,
 	    write: write,
 	    move: move,
+	    moveDir: moveDir,
 	    copy: copy,
 	    remove: remove,
 	    removeDir: removeDir,
 	    list: list,
 	    ensure: ensure,
 	    exists: exists,
+	    existsDir: existsDir,
 	    download: download,
 	    upload: upload,
 	    toURL:toURL,
