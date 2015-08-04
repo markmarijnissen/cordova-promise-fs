@@ -107,7 +107,15 @@ module.exports = function(options){
         console.warn('Chrome does not support fileSystem "'+type+'". Falling back on "0" (temporary).');
         type = 0;
       }
-      window.requestFileSystem(type, options.storageSize, resolve, reject);
+      // On chrome, request quota to store persistent files
+      if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
+        navigator.webkitPersistentStorage.requestQuota(options.storageSize, function(grantedBytes) {
+          window.requestFileSystem(type, grantedBytes, resolve, reject);
+        });
+      }
+      else {
+        window.requestFileSystem(type, options.storageSize, resolve, reject);
+      }
       setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
     },reject);
   });
