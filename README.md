@@ -138,6 +138,10 @@ This problem is solved in CordovaPromiseFS.
 
 ## Changelog
 
+### 0.13.0 (16/09/2015)
+
+* Merged pull request from @Ijzerenhein. Fixed Chrome Persistent storage quota issue and added directory methods.
+
 ### 0.12.0 (17/03/2015)
 
 * Merged pull request from @jakgra. Now you can write to hidden folders on Android. Thanks!
