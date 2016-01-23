@@ -43,7 +43,7 @@ var CordovaPromiseFS =
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/**
 	 * Static Private functions
@@ -451,14 +451,14 @@ var CordovaPromiseFS =
 
 	      // fetch filetranfer, method-type (isDownload) and arguments
 	      var args = transferQueue.pop();
-	      var ft = args.shift();
-	      var isDownload = args.shift();
-	      var serverUrl = args.shift();
-	      var localPath = args.shift();
-	      var win = args.shift();
-	      var fail = args.shift();
-	      var trustAllHosts = args.shift();
-	      var transferOptions = args.shift();
+		  var ft = args.fileTransfer,
+		      isDownload = args.isDownload,
+		      serverUrl = args.serverUrl,
+		      localPath = args.localPath,
+		      trustAllHost = args.trustAllHost,
+		      transferOptions = args.transferOptions,
+		      win = args.resolve,
+		      fail = args.attempt;
 
 	      if(ft._aborted) {
 	        inprogress--;
@@ -504,7 +504,17 @@ var CordovaPromiseFS =
 	        if(transferOptions.retry.length === 0) {
 	          reject(err);
 	        } else {
-	          transferQueue.unshift([ft,isDownload,serverUrl,localPath,resolve,attempt,transferOptions.trustAllHosts || false,transferOptions]);
+			  var transferJob = {
+			    fileTransfer:ft,
+			    isDownload:isDownload,
+			    serverUrl:serverUrl,
+			    localPath:localPath,
+			    trustAllHost:transferOptions.trustAllHosts || false,
+			    transferOptions:transferOptions,
+			    win:resolve,
+			    fail:attempt			
+			  };
+	          transferQueue.unshift(transferJob);
 	          var timeout = transferOptions.retry.shift();
 	          if(timeout > 0) {
 	            setTimeout(nextTransfer,timeout);
