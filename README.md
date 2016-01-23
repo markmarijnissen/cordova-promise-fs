@@ -74,6 +74,7 @@ fs.write(filename,data)   // writes a Blob, a String, or data (as JSON). Ensures
 fs.create(filename)       // creates a file
 fs.ensure(path)           // ensures directory exists
 fs.move(src,dest)         // move from src to dist. Ensures dest directory exists.
+fs.moveDir(src,dest)
 fs.copy(src,dest)         // copy from src to dist. Ensures dest directory exists.
 fs.remove(src)            // removes file. Resolves even if file was already removed.
 fs.remove(src,true)       // removes file. Rejects when file does not exist.

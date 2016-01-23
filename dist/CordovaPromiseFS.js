@@ -43,7 +43,7 @@ var CordovaPromiseFS =
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/**
 	 * Static Private functions
