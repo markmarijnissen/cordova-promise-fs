@@ -44,7 +44,7 @@ module.exports = function(options){
   if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
 
   /* default options */
-  this.options = options = options || {};
+  options = options || {};
   options.persistent = options.persistent !== undefined? options.persistent: true;
   options.storageSize = options.storageSize || 20*1024*1024;
   options.concurrency = options.concurrency || 3;
