@@ -74,8 +74,31 @@ var CordovaPromiseFS =
 	function normalize(str){
 	  str = str || '';
 	  if(str[0] === '/') str = str.substr(1);
-	  if(!!str && str.indexOf('.') < 0 && str[str.length-1] !== '/') str += '/';
-	  if(str === './') str = '';
+
+	  var tokens = str.split('/'), last = tokens[0];
+
+	  // check tokens for instances of .. and .
+	  for(var i=1;i < tokens.length;i++) {
+	    last = tokens[i];
+	    if (tokens[i] === '..') {
+	      // remove the .. and the previous token
+	      tokens.splice(i-1,2);
+	      // rewind 'cursor' 2 tokens
+	      i = i - 2;
+	    } else if (tokens[i] === '.') {
+	      // remove the .. and the previous token
+	      tokens.splice(i,1);
+	      // rewind 'cursor' 1 token
+	      i--;
+	    }
+	  }
+
+	  str = tokens.join('/');
+	  if(str === './') {
+	    str = '';
+	  } else if(last && last.indexOf('.') < 0 && str[str.length - 1] != '/'){
+	    str += '/';
+	  }
 	  return str;
 	}
 
@@ -91,7 +114,7 @@ var CordovaPromiseFS =
 	  if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
 
 	  /* default options */
-	  this.options = options = options || {};
+	  options = options || {};
 	  options.persistent = options.persistent !== undefined? options.persistent: true;
 	  options.storageSize = options.storageSize || 20*1024*1024;
 	  options.concurrency = options.concurrency || 3;
@@ -146,7 +169,7 @@ var CordovaPromiseFS =
 	  var fs = new Promise(function(resolve,reject){
 	    deviceready.then(function(){
 	      var type = options.persistent? 1: 0;
-	      if(typeof options.fileSystem === 'number'){
+	      if(options.fileSystem){
 	        type = options.fileSystem;
 	      }
 	      // Chrome only supports persistent and temp storage, not the exotic onces from Cordova
@@ -154,15 +177,14 @@ var CordovaPromiseFS =
 	        console.warn('Chrome does not support fileSystem "'+type+'". Falling back on "0" (temporary).');
 	        type = 0;
 	      }
-	      // On chrome, request quota to store persistent files
-	      if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
-	        navigator.webkitPersistentStorage.requestQuota(options.storageSize, function(grantedBytes) {
-	          window.requestFileSystem(type, grantedBytes, resolve, reject);
-	        });
-	      }
-	      else {
-	        window.requestFileSystem(type, options.storageSize, resolve, reject);
-	      }
+	        if(isNaN(type)) {
+	            window.resolveLocalFileSystemURL(type,function(directory){
+	                resolve(directory.filesystem);
+	            },reject);
+	        }else{
+	            window.requestFileSystem(type, options.storageSize, resolve, reject);
+	        }
+
 	      setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
 	    },reject);
 	  });
@@ -233,8 +255,6 @@ var CordovaPromiseFS =
 
 	    return new Promise(function(resolve,reject){
 	      return dir(path).then(function(dirEntry){
-	        APP.dirEntry=dirEntry;
-	        console.log('dirEntry',dirEntry);
 	        var dirReader = dirEntry.createReader();
 	        var totalEntities=[];
 	        var readDir = function(entries) {
@@ -470,10 +490,10 @@ var CordovaPromiseFS =
 		      isDownload = args.isDownload,
 		      serverUrl = args.serverUrl,
 		      localPath = args.localPath,
-		      trustAllHost = args.trustAllHost,
+		      trustAllHosts = args.trustAllHosts,
 		      transferOptions = args.transferOptions,
-		      win = args.resolve,
-		      fail = args.attempt;
+		      win = args.win,
+		      fail = args.fail;
 
 	      if(ft._aborted) {
 	        inprogress--;
@@ -519,16 +539,17 @@ var CordovaPromiseFS =
 	        if(transferOptions.retry.length === 0) {
 	          reject(err);
 	        } else {
-			  var transferJob = {
-			    fileTransfer:ft,
-			    isDownload:isDownload,
-			    serverUrl:serverUrl,
-			    localPath:localPath,
-			    trustAllHost:transferOptions.trustAllHosts || false,
-			    transferOptions:transferOptions,
-			    win:resolve,
-			    fail:attempt			
-			  };
+
+	    		  var transferJob = {
+	    		    fileTransfer:ft,
+	    		    isDownload:isDownload,
+	    		    serverUrl:serverUrl,
+	    		    localPath:localPath,
+	    		    trustAllHosts:transferOptions.trustAllHosts || false,
+	    		    transferOptions:transferOptions,
+	    		    win:resolve,
+	    		    fail:attempt			
+	    		  };
 	          transferQueue.unshift(transferJob);
 	          var timeout = transferOptions.retry.shift();
 	          if(timeout > 0) {

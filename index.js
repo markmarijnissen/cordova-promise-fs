@@ -28,10 +28,11 @@ function normalize(str){
   str = str || '';
   if(str[0] === '/') str = str.substr(1);
 
-  var tokens = str.split('/');
+  var tokens = str.split('/'), last = tokens[0];
 
   // check tokens for instances of .. and .
   for(var i=1;i < tokens.length;i++) {
+    last = tokens[i];
     if (tokens[i] === '..') {
       // remove the .. and the previous token
       tokens.splice(i-1,2);
@@ -46,7 +47,11 @@ function normalize(str){
   }
 
   str = tokens.join('/');
-  if(str === './') str = '';
+  if(str === './') {
+    str = '';
+  } else if(last && last.indexOf('.') < 0 && str[str.length - 1] != '/'){
+    str += '/';
+  }
   return str;
 }
 
@@ -203,8 +208,6 @@ module.exports = function(options){
 
     return new Promise(function(resolve,reject){
       return dir(path).then(function(dirEntry){
-        APP.dirEntry=dirEntry;
-        console.log('dirEntry',dirEntry);
         var dirReader = dirEntry.createReader();
         var totalEntities=[];
         var readDir = function(entries) {
@@ -440,10 +443,10 @@ module.exports = function(options){
 	      isDownload = args.isDownload,
 	      serverUrl = args.serverUrl,
 	      localPath = args.localPath,
-	      trustAllHost = args.trustAllHost,
+	      trustAllHosts = args.trustAllHosts,
 	      transferOptions = args.transferOptions,
-	      win = args.resolve,
-	      fail = args.attempt;
+	      win = args.win,
+	      fail = args.fail;
 
       if(ft._aborted) {
         inprogress--;
@@ -489,16 +492,17 @@ module.exports = function(options){
         if(transferOptions.retry.length === 0) {
           reject(err);
         } else {
-		  var transferJob = {
-		    fileTransfer:ft,
-		    isDownload:isDownload,
-		    serverUrl:serverUrl,
-		    localPath:localPath,
-		    trustAllHost:transferOptions.trustAllHosts || false,
-		    transferOptions:transferOptions,
-		    win:resolve,
-		    fail:attempt			
-		  };
+
+    		  var transferJob = {
+    		    fileTransfer:ft,
+    		    isDownload:isDownload,
+    		    serverUrl:serverUrl,
+    		    localPath:localPath,
+    		    trustAllHosts:transferOptions.trustAllHosts || false,
+    		    transferOptions:transferOptions,
+    		    win:resolve,
+    		    fail:attempt			
+    		  };
           transferQueue.unshift(transferJob);
           var timeout = transferOptions.retry.shift();
           if(timeout > 0) {

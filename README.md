@@ -120,6 +120,7 @@ In CordovaPromiseFS, all filenames and paths are normalized:
 * Directories should end with a `/`.
 * Filenames and directories should never start with a `/`.
 * `"./"` is converted to `""`
+* ".." and "." are resolved.
 
 This allows you to concatenate normalized paths, i.e.
 ```javascript
@@ -139,7 +140,7 @@ This problem is solved in CordovaPromiseFS.
 
 ## Changelog
 
-### 0.14.0 (07/02/2016)
+### 1.0.0 (07/02/2016)
 
 * Fixed bug in list function, thanks @sebastian-greco
 * Improved code readability of transfer, thanks @youjenli
