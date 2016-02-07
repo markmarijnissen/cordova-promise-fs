@@ -233,25 +233,40 @@ var CordovaPromiseFS =
 
 	    return new Promise(function(resolve,reject){
 	      return dir(path).then(function(dirEntry){
+	        APP.dirEntry=dirEntry;
+	        console.log('dirEntry',dirEntry);
 	        var dirReader = dirEntry.createReader();
-	        dirReader.readEntries(function(entries) {
-	          var promises = [ResolvedPromise(entries)];
-	          if(recursive) {
-	            entries
-	              .filter(function(entry){return entry.isDirectory; })
-	              .forEach(function(entry){
-	                promises.push(list(entry.fullPath,'re'));
-	              });
+	        var totalEntities=[];
+	        var readDir = function(entries) {
+	          if(entries.length===0) {
+	            return ResolvedPromise(totalEntities).then(function(){resolve(totalEntities);});
+	          } else {
+	            var promises = [ResolvedPromise(entries)];
+	            if(recursive) {
+	             entries
+	                .filter(function(entry){return entry.isDirectory; })
+	                .forEach(function(entry){
+	                  promises.push(list(entry.fullPath,'re'));
+	                });
+	            }
+
+	            promises.push(new Promise(function(re,rej){
+	             dirReader.readEntries(function(eents) {
+	                readDir(eents).then(function(){re(eents);},rej);
+	             }, reject);
+	            }));
+
+	            if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
+	            if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
+	            if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+	            totalEntities = totalEntities.concat.apply(totalEntities,entries);
+
+	            return Promise.all(promises);
 	          }
-	          Promise.all(promises).then(function(values){
-	              var entries = [];
-	              entries = entries.concat.apply(entries,values);
-	              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
-	              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
-	              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
-	              resolve(entries);
-	            },reject);
-	        }, reject);
+
+	        };
+
+	        dirReader.readEntries(readDir, reject);
 	      },reject);
 	    });
 	  }
