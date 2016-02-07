@@ -139,6 +139,14 @@ This problem is solved in CordovaPromiseFS.
 
 ## Changelog
 
+### 0.14.0 (07/02/2016)
+
+* Fixed bug in list function, thanks @sebastian-greco
+* Improved code readability of transfer, thanks @youjenli
+* There is no this, thanks @m0ppers
+* Accept string as FileSystem, thanks @dortzur
+* Normalize ".." in paths, thanks @starquake
+
 ### 0.13.0 (16/09/2015)
 
 * Merged pull request from @Ijzerenhein. Fixed Chrome Persistent storage quota issue and added directory methods.
