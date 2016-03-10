@@ -176,16 +176,17 @@ var CordovaPromiseFS =
 	      if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
 	        navigator.webkitPersistentStorage.requestQuota(options.storageSize, function(grantedBytes) {
 	          window.requestFileSystem(type, grantedBytes, resolve, reject);
-	        });
-	      }
-	      // Exotic Cordova Directories (options.fileSystem = string)
-	      if(isNaN(type)) {
-	          window.resolveLocalFileSystemURL(type,function(directory){
-	              resolve(directory.filesystem);
-	          },reject);
-	      // Normal browser usage
+	        }, reject);
 	      } else {
-	          window.requestFileSystem(type, options.storageSize, resolve, reject);
+	        // Exotic Cordova Directories (options.fileSystem = string)
+	        if(isNaN(type)) {
+	            window.resolveLocalFileSystemURL(type,function(directory){
+	                resolve(directory.filesystem);
+	            },reject);
+	        // Normal browser usage
+	        } else {
+	            window.requestFileSystem(type, options.storageSize, resolve, reject);
+	        }
 	      }
 
 	      setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
