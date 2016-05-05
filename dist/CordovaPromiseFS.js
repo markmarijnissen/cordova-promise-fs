@@ -8,23 +8,23 @@ var CordovaPromiseFS =
 
 /******/ 		// Check if module is in cache
 /******/ 		if(installedModules[moduleId])
-/******/ 			return installedModules[moduleId].exports;
+/******/ 			return installedModules[moduleId].e;
 
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
-/******/ 			exports: {},
-/******/ 			id: moduleId,
-/******/ 			loaded: false
+/******/ 			e: {},
+/******/ 			i: moduleId,
+/******/ 			l: false
 /******/ 		};
 
 /******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/ 		modules[moduleId].call(module.e, module, module.e, __webpack_require__);
 
 /******/ 		// Flag the module as loaded
-/******/ 		module.loaded = true;
+/******/ 		module.l = true;
 
 /******/ 		// Return the exports of the module
-/******/ 		return module.exports;
+/******/ 		return module.e;
 /******/ 	}
 
 
@@ -38,12 +38,12 @@ var CordovaPromiseFS =
 /******/ 	__webpack_require__.p = "";
 
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(0);
+/******/ 	return __webpack_require__(__webpack_require__.s = 0);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
 	/**
 	 * Static Private functions
@@ -108,7 +108,7 @@ var CordovaPromiseFS =
 	/**
 	 * Factory function: Create a single instance (based on single FileSystem)
 	 */
-	module.exports = function(options){
+	module.e = function(options){
 	  /* Promise implementation */
 	  var Promise = options.Promise || window.Promise;
 	  if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
@@ -407,15 +407,35 @@ var CordovaPromiseFS =
 	            writer.onwriteend = resolve;
 	            writer.onerror = reject;
 	            if(typeof blob === 'string') {
-	              blob = new Blob([blob],{type: mimeType || 'text/plain'});
+	              blob = createBlob([blob], mimeType || 'text/plain');
 	            } else if(blob instanceof Blob !== true){
-	              blob = new Blob([JSON.stringify(blob,null,4)],{type: mimeType || 'application/json'});
+	              blob = createBlob([JSON.stringify(blob,null,4)], mimeType || 'application/json');
 	            }
 	            writer.write(blob);
 	          },reject);
 	        });
 	      });
 	    }
+
+	  function createBlob(parts, type) {
+	    var BlobBuilder,
+	        bb;
+	    try {
+	      return new Blob(parts, {type: type});
+	    } catch(e) {
+	      BlobBuilder = window.BlobBuilder ||
+	        window.WebKitBlobBuilder ||
+	        window.MozBlobBuilder ||
+	        window.MSBlobBuilder;
+	      if(BlobBuilder) {
+	        bb = new BlobBuilder();
+	        bb.append(parts);
+	        return bb.getBlob(type);
+	      } else {
+	        throw new Error("Unable to create blob");
+	      }
+	    }
+	  }
 
 	  /* move a file */
 	  function move(src,dest) {
@@ -551,7 +571,7 @@ var CordovaPromiseFS =
 	    		    trustAllHosts:transferOptions.trustAllHosts || false,
 	    		    transferOptions:transferOptions,
 	    		    win:resolve,
-	    		    fail:attempt			
+	    		    fail:attempt
 	    		  };
 	          transferQueue.unshift(transferJob);
 	          var timeout = transferOptions.retry.shift();
