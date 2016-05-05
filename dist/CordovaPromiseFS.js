@@ -8,23 +8,23 @@ var CordovaPromiseFS =
 
 /******/ 		// Check if module is in cache
 /******/ 		if(installedModules[moduleId])
-/******/ 			return installedModules[moduleId].e;
+/******/ 			return installedModules[moduleId].exports;
 
 /******/ 		// Create a new module (and put it into the cache)
 /******/ 		var module = installedModules[moduleId] = {
-/******/ 			e: {},
-/******/ 			i: moduleId,
-/******/ 			l: false
+/******/ 			exports: {},
+/******/ 			id: moduleId,
+/******/ 			loaded: false
 /******/ 		};
 
 /******/ 		// Execute the module function
-/******/ 		modules[moduleId].call(module.e, module, module.e, __webpack_require__);
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
 
 /******/ 		// Flag the module as loaded
-/******/ 		module.l = true;
+/******/ 		module.loaded = true;
 
 /******/ 		// Return the exports of the module
-/******/ 		return module.e;
+/******/ 		return module.exports;
 /******/ 	}
 
 
@@ -38,12 +38,12 @@ var CordovaPromiseFS =
 /******/ 	__webpack_require__.p = "";
 
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 0);
+/******/ 	return __webpack_require__(0);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
 	/**
 	 * Static Private functions
@@ -108,7 +108,7 @@ var CordovaPromiseFS =
 	/**
 	 * Factory function: Create a single instance (based on single FileSystem)
 	 */
-	module.e = function(options){
+	module.exports = function(options){
 	  /* Promise implementation */
 	  var Promise = options.Promise || window.Promise;
 	  if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
@@ -119,6 +119,7 @@ var CordovaPromiseFS =
 	  options.storageSize = options.storageSize || 20*1024*1024;
 	  options.concurrency = options.concurrency || 3;
 	  options.retry = options.retry || [];
+	  options.debug = !!options.debug;
 
 	  /* Cordova deviceready promise */
 	  var deviceready, isCordova = typeof cordova !== 'undefined';
@@ -139,7 +140,7 @@ var CordovaPromiseFS =
 	        xhr.responseType = "blob";
 	        xhr.onreadystatechange = function(onSuccess, onError, cb) {
 	          if (xhr.readyState == 4) {
-	            if(xhr.status === 200){
+	            if(xhr.status === 200 && !this._aborted){
 	              write(file,xhr.response).then(win,fail);
 	            } else {
 	              fail(xhr.status);
@@ -148,6 +149,9 @@ var CordovaPromiseFS =
 	        };
 	        xhr.send();
 	        return xhr;
+	      };
+	      FileTransfer.prototype.abort = function(){
+	        this._aborted = true;
 	      };
 	      window.ProgressEvent = function ProgressEvent(){};
 	      window.FileEntry = function FileEntry(){};
@@ -195,6 +199,8 @@ var CordovaPromiseFS =
 
 	  /* debug */
 	  fs.then(function(fs){
+	    CDV_INTERNAL_URL_ROOT = fs.root.toInternalURL();
+	    CDV_URL_ROOT = fs.root.toURL();
 	    window.__fs = fs;
 	  },function(err){
 	    console.error('Could not get Cordova FileSystem:',err);
@@ -260,37 +266,24 @@ var CordovaPromiseFS =
 	    return new Promise(function(resolve,reject){
 	      return dir(path).then(function(dirEntry){
 	        var dirReader = dirEntry.createReader();
-	        var totalEntities=[];
-	        var readDir = function(entries) {
-	          if(entries.length===0) {
-	            return ResolvedPromise(totalEntities).then(function(){resolve(totalEntities);});
-	          } else {
-	            var promises = [ResolvedPromise(entries)];
-	            if(recursive) {
-	             entries
-	                .filter(function(entry){return entry.isDirectory; })
-	                .forEach(function(entry){
-	                  promises.push(list(entry.fullPath,'re'));
-	                });
-	            }
-
-	            promises.push(new Promise(function(re,rej){
-	             dirReader.readEntries(function(eents) {
-	                readDir(eents).then(function(){re(eents);},rej);
-	             }, reject);
-	            }));
-
-	            if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
-	            if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
-	            if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
-	            totalEntities = totalEntities.concat.apply(totalEntities,entries);
-
-	            return Promise.all(promises);
+	        dirReader.readEntries(function(entries) {
+	          var promises = [ResolvedPromise(entries)];
+	          if(recursive) {
+	            entries
+	              .filter(function(entry){return entry.isDirectory; })
+	              .forEach(function(entry){
+	                promises.push(list(entry.fullPath,'re'));
+	              });
 	          }
-
-	        };
-
-	        dirReader.readEntries(readDir, reject);
+	          Promise.all(promises).then(function(values){
+	              var entries = [];
+	              entries = entries.concat.apply(entries,values);
+	              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
+	              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
+	              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+	              resolve(entries);
+	            },reject);
+	        }, reject);
 	      },reject);
 	    });
 	  }
@@ -345,12 +338,19 @@ var CordovaPromiseFS =
 	  }
 
 	  /* convert path to URL to be used in JS/CSS/HTML */
-	  var toInternalURL,toInternalURLSync;
+	  var toInternalURL,toInternalURLSync,toURLSync;
+	  CDV_INTERNAL_URL_ROOT = 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/');
+	  CDV_URL_ROOT = '';
 	  if(isCordova) {
 	    /* synchronous helper to get internal URL. */
 	    toInternalURLSync = function(path){
 	      path = normalize(path);
-	      return path.indexOf('://') < 0? 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/') + path: path;
+	      return path.indexOf('://') < 0? CDV_INTERNAL_URL_ROOT + path: path;
+	    };
+	    /* synchronous helper to get native URL. */
+	    toURLSync = function(path){
+	      path = normalize(path);
+	      return path.indexOf('://') < 0? CDV_URL_ROOT + path: path;
 	    };
 
 	    toInternalURL = function(path) {
@@ -370,6 +370,7 @@ var CordovaPromiseFS =
 	        return fileEntry.toURL();
 	      });
 	    };
+	    toURLSync = toInternalURLSync;
 	  }
 
 	  /* return contents of a file */
@@ -544,7 +545,7 @@ var CordovaPromiseFS =
 	      onprogress = transferOptions;
 	      transferOptions = {};
 	    }
-	    if(isCordova && localPath.indexOf('://') < 0) localPath = toInternalURLSync(localPath);
+	    if(isCordova && localPath.indexOf('://') < 0) localPath = toURLSync(localPath);
 
 	    transferOptions = transferOptions || {};
 	    if(!transferOptions.retry || !transferOptions.retry.length) {
@@ -561,6 +562,7 @@ var CordovaPromiseFS =
 	    var promise = new Promise(function(resolve,reject){
 	      var attempt = function(err){
 	        if(transferOptions.retry.length === 0) {
+	          if(options.debug) console.log('FileTransfer Error: '+serverUrl,err);
 	          reject(err);
 	        } else {
 
