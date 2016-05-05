@@ -199,8 +199,8 @@ var CordovaPromiseFS =
 
 	  /* debug */
 	  fs.then(function(fs){
-	    CDV_INTERNAL_URL_ROOT = fs.root.toInternalURL();
 	    CDV_URL_ROOT = fs.root.toURL();
+	    CDV_INTERNAL_URL_ROOT = isCordova? fs.root.toInternalURL(): CDV_URL_ROOT;
 	    window.__fs = fs;
 	  },function(err){
 	    console.error('Could not get Cordova FileSystem:',err);

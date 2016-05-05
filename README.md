@@ -16,9 +16,9 @@ Are you entangled in a async callback mess to get even the simplest task done? W
   npm install bluebird # a library that follows the Promise/A+ spec
   
   # install Cordova and plugins
-  cordova platform add ios@3.7.0
-  cordova plugin add org.apache.cordova.file
-  cordova plugin add org.apache.cordova.file-transfer # optional
+  cordova platform add ios
+  cordova plugin add cordova-plugin-file
+  cordova plugin add cordova-plugin-file-transfer # optional
 ```
 
 **IMPORTANT:** For iOS, use Cordova 3.7.0 or higher (due to a [bug](https://github.com/AppGyver/steroids/issues/534) that affects requestFileSystem).
@@ -139,6 +139,11 @@ filesystem.root.getDirectory(path); // NullPointer error in android. Stupid!
 This problem is solved in CordovaPromiseFS.
 
 ## Changelog
+
+### 1.1.0 (05/05/2016)
+
+* Fixed bug: download/upload support for different Cordova FileSystems.
+* 
 
 ### 1.0.0 (07/02/2016)
 
