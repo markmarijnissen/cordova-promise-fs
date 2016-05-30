@@ -610,6 +610,20 @@ var CordovaPromiseFS =
 	    return filetransfer(false,dest,source,options,onprogress);
 	  }
 
+	  function availableSpace(){
+	    return new Promise(function(resolve,reject) {
+	      if(!isCordova) {
+	        resolve(100)
+	      } else {
+	        cordova.exec(function(result) {
+	          resolve(result);
+	        }, function(error) {
+	          reject(error);
+	        }, "File", "getFreeDiskSpace", []);
+	      }
+	    });
+	  }
+
 	  return {
 	    fs: fs,
 	    normalize: normalize,
@@ -637,6 +651,7 @@ var CordovaPromiseFS =
 	    toInternalURLSync: toInternalURLSync,
 	    toInternalURL:toInternalURL,
 	    toDataURL:toDataURL,
+	    availableSpace: availableSpace,
 	    deviceready: deviceready,
 	    options: options,
 	    Promise: Promise
