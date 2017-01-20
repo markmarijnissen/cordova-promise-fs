@@ -64,10 +64,13 @@ var transferQueue = [], // queued fileTransfers
 module.exports = function(options){
   /* Promise implementation */
   var Promise = options.Promise || window.Promise;
+  var CDV_INTERNAL_URL_ROOT = 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/');
+  var CDV_URL_ROOT = '';
   if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
 
   /* default options */
   options = options || {};
+  options.crosswalk = !!options.crosswalk;
   options.persistent = options.persistent !== undefined? options.persistent: true;
   options.storageSize = options.storageSize || 20*1024*1024;
   options.concurrency = options.concurrency || 3;
@@ -75,44 +78,52 @@ module.exports = function(options){
   options.debug = !!options.debug;
 
   /* Cordova deviceready promise */
-  var deviceready, isCordova = typeof cordova !== 'undefined';
+  var deviceready,
+      isCordova = typeof cordova !== 'undefined' && !options.crosswalk,
+      isCrosswalk = options.crosswalk;
   if(isCordova){
     deviceready = new Promise(function(resolve,reject){
       document.addEventListener("deviceready", resolve, false);
       setTimeout(function(){ reject(new Error('deviceready has not fired after 5 seconds.')); },5100);
     });
+  } else if(isCrosswalk) {
+    deviceready = ResolvedPromise(true);
   } else {
     /* FileTransfer implementation for Chrome */
     deviceready = ResolvedPromise(true);
     if(typeof webkitRequestFileSystem !== 'undefined'){
       window.requestFileSystem = webkitRequestFileSystem;
-      window.FileTransfer = function FileTransfer(){};
-      FileTransfer.prototype.download = function download(url,file,win,fail) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url);
-        xhr.responseType = "blob";
-        xhr.onreadystatechange = function(onSuccess, onError, cb) {
-          if (xhr.readyState == 4) {
-            if(xhr.status === 200 && !this._aborted){
-              write(file,xhr.response).then(win,fail);
-            } else {
-              fail(xhr.status);
-            }
-          }
-        };
-        xhr.send();
-        return xhr;
-      };
-      FileTransfer.prototype.abort = function(){
-        this._aborted = true;
-      };
-      window.ProgressEvent = function ProgressEvent(){};
-      window.FileEntry = function FileEntry(){};
     } else {
       window.requestFileSystem = function(x,y,z,fail){
         fail(new Error('requestFileSystem not supported!'));
       };
     }
+  }
+
+  // Polyfill Filetransfer
+  if(!isCordova){
+    window.FileTransfer = function FileTransfer(){};
+    FileTransfer.prototype.download = function download(url,file,win,fail) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.responseType = "blob";
+      xhr.onreadystatechange = function(onSuccess, onError, cb) {
+        if (xhr.readyState == 4) {
+          if(xhr.status === 200 && !this._aborted){
+            write(file,xhr.response).then(win,fail);
+          } else {
+            fail(xhr.status);
+          }
+        }
+      };
+      xhr.send();
+      return xhr;
+    };
+    FileTransfer.prototype.abort = function(){
+      this._aborted = true;
+    };
+    window.ProgressEvent = function ProgressEvent(){};
+    window.FileEntry = function FileEntry(){};
   }
 
   /* Promise resolve helper */
@@ -129,21 +140,31 @@ module.exports = function(options){
       if(options.fileSystem && isCordova){
         type = options.fileSystem;
       }
+      // Crosswalk
+      if(isCrosswalk){
+        const system = options.fileSystem || 'cachedir';
+        xwalk.experimental.native_file_system.requestNativeFileSystem(system,function(fs){
+          fs.root.getDirectory(system, {create: false}, function(dirEntry) {
+            resolve({
+              name: fs.name,
+              root: dirEntry
+            });
+          }, reject);
+        },reject);
       // On chrome, request quota to store persistent files
-      if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
+      } else if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
         navigator.webkitPersistentStorage.requestQuota(options.storageSize, function(grantedBytes) {
           window.requestFileSystem(type, grantedBytes, resolve, reject);
         }, reject);
+
+      // Exotic Cordova Directories (options.fileSystem = string)
+      } else if(isNaN(type)) {
+        window.resolveLocalFileSystemURL(type,function(directory){
+            resolve(directory.filesystem);
+        },reject);
+      // Normal browser usage
       } else {
-        // Exotic Cordova Directories (options.fileSystem = string)
-        if(isNaN(type)) {
-            window.resolveLocalFileSystemURL(type,function(directory){
-                resolve(directory.filesystem);
-            },reject);
-        // Normal browser usage
-        } else {
-            window.requestFileSystem(type, options.storageSize, resolve, reject);
-        }
+        window.requestFileSystem(type, options.storageSize, resolve, reject);
       }
 
       setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
@@ -292,8 +313,6 @@ module.exports = function(options){
 
   /* convert path to URL to be used in JS/CSS/HTML */
   var toInternalURL,toInternalURLSync,toURLSync;
-  CDV_INTERNAL_URL_ROOT = 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/');
-  CDV_URL_ROOT = '';
   if(isCordova) {
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
@@ -311,6 +330,18 @@ module.exports = function(options){
         return fileEntry.toInternalURL();
       });
     };
+  } else if(isCrosswalk){
+    /* synchronous helper to get internal URL. */
+    toInternalURLSync = function(path){
+      path = normalize(path);
+      return path.indexOf('://') < 0? CDV_INTERNAL_URL_ROOT + path: path;
+    };
+    toInternalURL = function(path) {
+      return file(path).then(function(fileEntry) {
+        return fileEntry.toInternalURL();
+      });
+    };
+    toURLSync = toInternalURLSync;
   } else {
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
@@ -586,6 +617,7 @@ module.exports = function(options){
     download: download,
     upload: upload,
     toURL:toURL,
+    toURLSync: toURLSync,
     isCordova:isCordova,
     toInternalURLSync: toInternalURLSync,
     toInternalURL:toInternalURL,
