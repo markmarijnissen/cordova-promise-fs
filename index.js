@@ -588,6 +588,20 @@ module.exports = function(options){
     return filetransfer(false,dest,source,options,onprogress);
   }
 
+  function availableSpace(){
+    return new Promise(function(resolve,reject) {
+      if(!isCordova) {
+        resolve(100)
+      } else {
+        cordova.exec(function(result) {
+          resolve(result);
+        }, function(error) {
+          reject(error);
+        }, "File", "getFreeDiskSpace", []);
+      }
+    });
+  }
+
   return {
     fs: fs,
     normalize: normalize,
@@ -616,6 +630,7 @@ module.exports = function(options){
     toInternalURLSync: toInternalURLSync,
     toInternalURL:toInternalURL,
     toDataURL:toDataURL,
+    availableSpace: availableSpace,
     deviceready: deviceready,
     options: options,
     Promise: Promise

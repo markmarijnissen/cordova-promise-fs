@@ -111,6 +111,7 @@ fs.dirname(path) // converts path dirname (everything except part after last /)
 fs.deviceready // deviceready promise
 fs.options // options
 fs.isCordova // is Cordova App?
+fs.availableSpace() // returns promise with available space in bytes
 ```
 
 ### Normalized path
