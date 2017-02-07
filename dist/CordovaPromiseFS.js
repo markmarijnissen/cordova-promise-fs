@@ -189,7 +189,7 @@ var CordovaPromiseFS =
 	      }
 	      // Crosswalk
 	      if(isCrosswalk){
-	        const system = options.fileSystem || 'cachedir';
+	        var system = options.fileSystem || 'cachedir';
 	        xwalk.experimental.native_file_system.requestNativeFileSystem(system,function(fs){
 	          fs.root.getDirectory(system, {create: false}, function(dirEntry) {
 	            resolve({
@@ -378,14 +378,15 @@ var CordovaPromiseFS =
 	      });
 	    };
 	  } else if(isCrosswalk){
+	    var system = options.fileSystem || 'cachedir';
 	    /* synchronous helper to get internal URL. */
 	    toInternalURLSync = function(path){
 	      path = normalize(path);
-	      return path.indexOf('://') < 0? CDV_INTERNAL_URL_ROOT + path: path;
+	      return path.indexOf(system) < 0? '/'+system+'/' + path: path;
 	    };
 	    toInternalURL = function(path) {
 	      return file(path).then(function(fileEntry) {
-	        return fileEntry.toInternalURL();
+	        return fileEntry.toURL();
 	      });
 	    };
 	    toURLSync = toInternalURLSync;
