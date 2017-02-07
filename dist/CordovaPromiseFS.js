@@ -190,14 +190,7 @@ var CordovaPromiseFS =
 	      // Crosswalk
 	      if(isCrosswalk){
 	        var system = options.fileSystem || 'cachedir';
-	        xwalk.experimental.native_file_system.requestNativeFileSystem(system,function(fs){
-	          fs.root.getDirectory(system, {create: false}, function(dirEntry) {
-	            resolve({
-	              name: fs.name,
-	              root: dirEntry
-	            });
-	          }, reject);
-	        },reject);
+	        xwalk.experimental.native_file_system.requestNativeFileSystem(system,resolve,reject);
 	      // On chrome, request quota to store persistent files
 	      } else if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
 	        navigator.webkitPersistentStorage.requestQuota(options.storageSize, function(grantedBytes) {
