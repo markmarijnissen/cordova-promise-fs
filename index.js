@@ -230,29 +230,44 @@ module.exports = function(options){
       onlyDirs = false;
     }
 
-    return new Promise(function(resolve,reject){
-      return dir(path).then(function(dirEntry){
-        var dirReader = dirEntry.createReader();
-        dirReader.readEntries(function(entries) {
-          var promises = [ResolvedPromise(entries)];
-          if(recursive) {
-            entries
-              .filter(function(entry){return entry.isDirectory; })
-              .forEach(function(entry){
-                promises.push(list(entry.fullPath,'re'));
-              });
+    return dir(path)
+      .then(function(dirEntry){
+        return new Promise(function(resolve, reject){
+          var entries = [];
+          var dirReader = dirEntry.createReader();
+          var fetchEntries = function(){
+            dirReader.readEntries(function(newEntries){
+              if(newEntries.length === 0) {
+                resolve(entries);
+              } else {
+                var args = [0,0].concat(newEntries);
+                entries.splice.apply(entries,args);
+                fetchEntries();
+              }
+            });
           }
-          Promise.all(promises).then(function(values){
-              var entries = [];
-              entries = entries.concat.apply(entries,values);
-              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
-              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
-              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
-              resolve(entries);
-            },reject);
-        }, reject);
-      },reject);
-    });
+          fetchEntries();
+        });
+      })
+      .then(function(entries){
+        var promises = [ResolvedPromise(entries)];
+        if(recursive) {
+          entries
+            .filter(function(entry){return entry.isDirectory; })
+            .forEach(function(entry){
+              promises.push(list(entry.fullPath,'re'));
+            });
+        }
+        return Promise.all(promises);
+      })
+      .then(function(values){
+        var entries = [];
+        entries = entries.concat.apply(entries,values);
+        if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
+        if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
+        if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+        return entries;
+      });
   }
 
   /* does file exist? If so, resolve with fileEntry, if not, resolve with false. */

@@ -14,7 +14,7 @@ Are you entangled in a async callback mess to get even the simplest task done? W
   # ...or npm...
   npm install cordova-promise-fs
   npm install bluebird # a library that follows the Promise/A+ spec
-  
+
   # install Cordova and plugins
   cordova platform add ios
   cordova plugin add cordova-plugin-file
@@ -31,9 +31,9 @@ Or just download and include [CordovaPromiseFS.js](https://raw.githubusercontent
 ```javascript
 var fs = CordovaPromiseFS({
   persistent: true, // or false
-  storageSize: 20*1024*1024, // storage size in bytes, default 20MB 
+  storageSize: 20*1024*1024, // storage size in bytes, default 20MB
   concurrency: 3 // how many concurrent uploads/downloads?
-  Promise: require('promiscuous') // Your favorite Promise/A+ library! 
+  Promise: require('promiscuous') // Your favorite Promise/A+ library!
 });
 ```
 
@@ -99,7 +99,7 @@ options.retry = [1000,2000,3000] // retry attemps: millisecond to wait before tr
 promise.progress(function(progressEvent){...})
 promise.abort();
 
-// Gotcha: progress and abort() are unchainable; 
+// Gotcha: progress and abort() are unchainable;
 fs.upload(...).then(...)  // won't return the augmented promise, just an ordinary one!
 ```
 
@@ -140,10 +140,14 @@ This problem is solved in CordovaPromiseFS.
 
 ## Changelog
 
+### 1.2.5 (05/05/2017)
+
+* Added Crosswalk
+* Bugfix: list will return more than 100 entries
+
 ### 1.1.0 (05/05/2016)
 
 * Fixed bug: download/upload support for different Cordova FileSystems.
-* 
 
 ### 1.0.0 (07/02/2016)
 

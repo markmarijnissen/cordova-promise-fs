@@ -1,6 +1,6 @@
 {
   "name": "cordova-promise-fs",
-  "version": "1.2.2",
+  "version": "1.2.5",
   "description": "Cordova FileSystem convienence functions that return promises.",
   "main": "index.js",
   "scripts": {
