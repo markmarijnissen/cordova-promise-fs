@@ -108,8 +108,8 @@ module.exports = function(options){
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url);
       xhr.responseType = "blob";
-      for(var name in option.headers) {
-        xhr.setRequestHeader(name, option.headers.name)
+      for(var name in options.headers) {
+        xhr.setRequestHeader(name, options.headers.name)
       }
       xhr.onreadystatechange = function(onSuccess, onError, cb) {
         if (xhr.readyState == 4) {
