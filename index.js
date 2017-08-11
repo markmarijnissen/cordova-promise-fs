@@ -76,6 +76,7 @@ module.exports = function(options){
   options.concurrency = options.concurrency || 3;
   options.retry = options.retry || [];
   options.debug = !!options.debug;
+  options.headers = options.headers || {};
 
   /* Cordova deviceready promise */
   var deviceready,
@@ -107,6 +108,9 @@ module.exports = function(options){
       var xhr = new XMLHttpRequest();
       xhr.open('GET', url);
       xhr.responseType = "blob";
+      for(var name in options.headers) {
+        xhr.setRequestHeader(name, options.headers.name)
+      }
       xhr.onreadystatechange = function(onSuccess, onError, cb) {
         if (xhr.readyState == 4) {
           if(xhr.status === 200 && !this._aborted){
