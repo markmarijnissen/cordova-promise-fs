@@ -475,9 +475,10 @@ module.exports = function(options){
             writer.onwriteend = resolve;
             writer.onerror = reject;
             if(typeof blob === 'string') {
-              blob = createBlob([blob], mimeType || 'text/plain');
+              // blob = createBlob([blob], mimeType || 'text/plain');
             } else if(blob instanceof Blob !== true){
-              blob = createBlob([JSON.stringify(blob,null,4)], mimeType || 'application/json');
+              // blob = createBlob([JSON.stringify(blob,null,4)], mimeType || 'application/json');
+              blob = JSON.stringify(blob,null,4);
             }
             writer.write(blob);
           },reject);
