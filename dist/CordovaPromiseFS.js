@@ -446,7 +446,12 @@ module.exports = function(options){
         fileEntry.file(function(file){
           var reader = new FileReader();
           reader.onloadend = function(){
-            resolve(this.result);
+            // Handle errors as well as successes
+            if (reader.error) {
+              reject(reader.error);
+            } else {
+              resolve(reader.result);
+            }
           };
           reader[method](file);
         },reject);
