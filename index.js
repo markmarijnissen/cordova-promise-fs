@@ -28,11 +28,10 @@ function normalize(str){
   str = str || '';
   if(str[0] === '/') str = str.substr(1);
 
-  var tokens = str.split('/'), last = tokens[0];
+  var tokens = str.split('/');
 
   // check tokens for instances of .. and .
   for(var i=1;i < tokens.length;i++) {
-    last = tokens[i];
     if (tokens[i] === '..') {
       // remove the .. and the previous token
       tokens.splice(i-1,2);
@@ -49,7 +48,7 @@ function normalize(str){
   str = tokens.join('/');
   if(str === './') {
     str = '';
-  } else if(last && last.indexOf('.') < 0 && str[str.length - 1] != '/'){
+  } else if(str && str.indexOf('.') < 0 && str[str.length - 1] != '/'){
     str += '/';
   }
   return str;
@@ -374,7 +373,12 @@ module.exports = function(options){
         fileEntry.file(function(file){
           var reader = new FileReader();
           reader.onloadend = function(){
-            resolve(this.result);
+            // Handle errors as well as successes
+            if (reader.error) {
+              reject(reader.error);
+            } else {
+              resolve(reader.result);
+            }
           };
           reader[method](file);
         },reject);
@@ -402,9 +406,10 @@ module.exports = function(options){
             writer.onwriteend = resolve;
             writer.onerror = reject;
             if(typeof blob === 'string') {
-              blob = createBlob([blob], mimeType || 'text/plain');
+              // blob = createBlob([blob], mimeType || 'text/plain');
             } else if(blob instanceof Blob !== true){
-              blob = createBlob([JSON.stringify(blob,null,4)], mimeType || 'application/json');
+              // blob = createBlob([JSON.stringify(blob,null,4)], mimeType || 'application/json');
+              blob = JSON.stringify(blob,null,4);
             }
             writer.write(blob);
           },reject);
