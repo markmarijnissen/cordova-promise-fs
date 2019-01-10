@@ -64,10 +64,13 @@ var transferQueue = [], // queued fileTransfers
 module.exports = function(options){
   /* Promise implementation */
   var Promise = options.Promise || window.Promise;
+  var CDV_INTERNAL_URL_ROOT = 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/');
+  var CDV_URL_ROOT = '';
   if(!Promise) { throw new Error("No Promise library given in options.Promise"); }
 
   /* default options */
   options = options || {};
+  options.crosswalk = !!options.crosswalk;
   options.persistent = options.persistent !== undefined? options.persistent: true;
   options.storageSize = options.storageSize || 20*1024*1024;
   options.concurrency = options.concurrency || 3;
@@ -75,44 +78,52 @@ module.exports = function(options){
   options.debug = !!options.debug;
 
   /* Cordova deviceready promise */
-  var deviceready, isCordova = typeof cordova !== 'undefined';
+  var deviceready,
+      isCordova = typeof cordova !== 'undefined' && !options.crosswalk,
+      isCrosswalk = options.crosswalk;
   if(isCordova){
     deviceready = new Promise(function(resolve,reject){
       document.addEventListener("deviceready", resolve, false);
       setTimeout(function(){ reject(new Error('deviceready has not fired after 5 seconds.')); },5100);
     });
+  } else if(isCrosswalk) {
+    deviceready = ResolvedPromise(true);
   } else {
     /* FileTransfer implementation for Chrome */
     deviceready = ResolvedPromise(true);
     if(typeof webkitRequestFileSystem !== 'undefined'){
       window.requestFileSystem = webkitRequestFileSystem;
-      window.FileTransfer = function FileTransfer(){};
-      FileTransfer.prototype.download = function download(url,file,win,fail) {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url);
-        xhr.responseType = "blob";
-        xhr.onreadystatechange = function(onSuccess, onError, cb) {
-          if (xhr.readyState == 4) {
-            if(xhr.status === 200 && !this._aborted){
-              write(file,xhr.response).then(win,fail);
-            } else {
-              fail(xhr.status);
-            }
-          }
-        };
-        xhr.send();
-        return xhr;
-      };
-      FileTransfer.prototype.abort = function(){
-        this._aborted = true;
-      };
-      window.ProgressEvent = function ProgressEvent(){};
-      window.FileEntry = function FileEntry(){};
     } else {
       window.requestFileSystem = function(x,y,z,fail){
         fail(new Error('requestFileSystem not supported!'));
       };
     }
+  }
+
+  // Polyfill Filetransfer
+  if(!isCordova){
+    window.FileTransfer = function FileTransfer(){};
+    FileTransfer.prototype.download = function download(url,file,win,fail) {
+      var xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.responseType = "blob";
+      xhr.onreadystatechange = function(onSuccess, onError, cb) {
+        if (xhr.readyState == 4) {
+          if(xhr.status === 200 && !this._aborted){
+            write(file,xhr.response).then(win,fail);
+          } else {
+            fail(xhr.status);
+          }
+        }
+      };
+      xhr.send();
+      return xhr;
+    };
+    FileTransfer.prototype.abort = function(){
+      this._aborted = true;
+    };
+    window.ProgressEvent = function ProgressEvent(){};
+    window.FileEntry = function FileEntry(){};
   }
 
   /* Promise resolve helper */
@@ -129,21 +140,24 @@ module.exports = function(options){
       if(options.fileSystem && isCordova){
         type = options.fileSystem;
       }
+      // Crosswalk
+      if(isCrosswalk){
+        var system = options.fileSystem || 'cachedir';
+        xwalk.experimental.native_file_system.requestNativeFileSystem(system,resolve,reject);
       // On chrome, request quota to store persistent files
-      if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
+      } else if (!isCordova && type === 1 && navigator.webkitPersistentStorage) {
         navigator.webkitPersistentStorage.requestQuota(options.storageSize, function(grantedBytes) {
           window.requestFileSystem(type, grantedBytes, resolve, reject);
         }, reject);
+
+      // Exotic Cordova Directories (options.fileSystem = string)
+      } else if(isNaN(type)) {
+        window.resolveLocalFileSystemURL(type,function(directory){
+            resolve(directory.filesystem);
+        },reject);
+      // Normal browser usage
       } else {
-        // Exotic Cordova Directories (options.fileSystem = string)
-        if(isNaN(type)) {
-            window.resolveLocalFileSystemURL(type,function(directory){
-                resolve(directory.filesystem);
-            },reject);
-        // Normal browser usage
-        } else {
-            window.requestFileSystem(type, options.storageSize, resolve, reject);
-        }
+        window.requestFileSystem(type, options.storageSize, resolve, reject);
       }
 
       setTimeout(function(){ reject(new Error('Could not retrieve FileSystem after 5 seconds.')); },5100);
@@ -216,29 +230,44 @@ module.exports = function(options){
       onlyDirs = false;
     }
 
-    return new Promise(function(resolve,reject){
-      return dir(path).then(function(dirEntry){
-        var dirReader = dirEntry.createReader();
-        dirReader.readEntries(function(entries) {
-          var promises = [ResolvedPromise(entries)];
-          if(recursive) {
-            entries
-              .filter(function(entry){return entry.isDirectory; })
-              .forEach(function(entry){
-                promises.push(list(entry.fullPath,'re'));
-              });
+    return dir(path)
+      .then(function(dirEntry){
+        return new Promise(function(resolve, reject){
+          var entries = [];
+          var dirReader = dirEntry.createReader();
+          var fetchEntries = function(){
+            dirReader.readEntries(function(newEntries){
+              if(newEntries.length === 0) {
+                resolve(entries);
+              } else {
+                var args = [0,0].concat(newEntries);
+                entries.splice.apply(entries,args);
+                fetchEntries();
+              }
+            });
           }
-          Promise.all(promises).then(function(values){
-              var entries = [];
-              entries = entries.concat.apply(entries,values);
-              if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
-              if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
-              if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
-              resolve(entries);
-            },reject);
-        }, reject);
-      },reject);
-    });
+          fetchEntries();
+        });
+      })
+      .then(function(entries){
+        var promises = [ResolvedPromise(entries)];
+        if(recursive) {
+          entries
+            .filter(function(entry){return entry.isDirectory; })
+            .forEach(function(entry){
+              promises.push(list(entry.fullPath,'re'));
+            });
+        }
+        return Promise.all(promises);
+      })
+      .then(function(values){
+        var entries = [];
+        entries = entries.concat.apply(entries,values);
+        if(onlyFiles) entries = entries.filter(function(entry) { return entry.isFile; });
+        if(onlyDirs) entries = entries.filter(function(entry) { return entry.isDirectory; });
+        if(!getAsEntries) entries = entries.map(function(entry) { return entry.fullPath; });
+        return entries;
+      });
   }
 
   /* does file exist? If so, resolve with fileEntry, if not, resolve with false. */
@@ -292,8 +321,6 @@ module.exports = function(options){
 
   /* convert path to URL to be used in JS/CSS/HTML */
   var toInternalURL,toInternalURLSync,toURLSync;
-  CDV_INTERNAL_URL_ROOT = 'cdvfile://localhost/'+(options.persistent? 'persistent/':'temporary/');
-  CDV_URL_ROOT = '';
   if(isCordova) {
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
@@ -311,6 +338,19 @@ module.exports = function(options){
         return fileEntry.toInternalURL();
       });
     };
+  } else if(isCrosswalk){
+    var system = options.fileSystem || 'cachedir';
+    /* synchronous helper to get internal URL. */
+    toInternalURLSync = function(path){
+      path = normalize(path);
+      return path.indexOf(system) < 0? '/'+system+'/' + path: path;
+    };
+    toInternalURL = function(path) {
+      return file(path).then(function(fileEntry) {
+        return fileEntry.toURL();
+      });
+    };
+    toURLSync = toInternalURLSync;
   } else {
     /* synchronous helper to get internal URL. */
     toInternalURLSync = function(path){
@@ -586,6 +626,7 @@ module.exports = function(options){
     download: download,
     upload: upload,
     toURL:toURL,
+    toURLSync: toURLSync,
     isCordova:isCordova,
     toInternalURLSync: toInternalURLSync,
     toInternalURL:toInternalURL,
