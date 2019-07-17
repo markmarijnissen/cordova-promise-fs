@@ -278,7 +278,7 @@ module.exports = function(options){
           resolve(fileEntry);
         },
         function(err){
-          if(err.code === 1) {
+          if(err.code === DOMException.NOT_FOUND_ERR || err.code === 1) {
             resolve(false);
           } else {
             reject(err);
@@ -296,7 +296,7 @@ module.exports = function(options){
           resolve(dirEntry);
         },
         function(err){
-          if(err.code === 1) {
+          if(err.code === DOMException.NOT_FOUND_ERR || err.code === 1) {
             resolve(false);
           } else {
             reject(err);
