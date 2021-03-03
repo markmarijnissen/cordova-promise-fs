@@ -59,7 +59,7 @@ optionString = 'rfe'      // mix options! return entries of all files, recursive
 ```javascript
 fs.read(filename)         // returns text-content of a file
 fs.readJSON(filename)     // returns JSON-parsed contents of a file
-fs.toUrl(filename)        // returns URL to be used in js/html/css (file://....)
+fs.toURL(filename)        // returns URL to be used in js/html/css (file://....)
 fs.toInternalURL(filename)// returns cordova internal URL (cdvfile://....)
 fs.toDataURL(filename)    // returns Base64 encoded Data URI
 ```
